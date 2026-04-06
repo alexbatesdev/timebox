@@ -681,13 +681,25 @@ export default function App() {
   /* persist to localStorage */
   useEffect(() => {
     if (schedType === null) return;
-    saveState({ schedType, blocks, tasks, wrapup });
-  }, [schedType, blocks, tasks, wrapup]);
+    saveState({ schedType, blocks, tasks, wrapup, notionPageId });
+  }, [schedType, blocks, tasks, wrapup, notionPageId]);
 
   useEffect(() => {
     let cancelled = false;
 
     const applyConfig = async () => {
+      const saved = loadState();
+      if (saved?.schedType) {
+        setSchedType(saved.schedType);
+        setBlocks(saved.blocks ?? []);
+        setTasks(saved.tasks ?? {});
+        setWrapup(saved.wrapup ?? { left: "", next: "" });
+        setNotionPageId(saved.notionPageId ?? null);
+        notified.current.clear();
+        setConfigStatus("ready");
+        return;
+      }
+
       const token = import.meta.env.VITE_NOTION_TOKEN;
       let notionState = null;
       try {
