@@ -22,6 +22,8 @@ const fmtDate = () =>
 const todayKey = () => `timebox-${new Date().toISOString().slice(0, 10)}`;
 const getWeekdayKey = () =>
   new Date().toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
+const NOTION_VERSION = "2022-06-28";
+const TIMEBOX_STATE_LABEL = "_timebox_state";
 
 /* ── localStorage ────────────────────────────────────────── */
 const loadState = () => {
@@ -270,13 +272,21 @@ const fmtTimeShort = (mins) => {
 const NOTION_CUSTOM_EMOJI_ID =
   import.meta.env.VITE_NOTION_CUSTOM_EMOJI_ID || "";
 
+const toRichText = (content) =>
+  (content || "")
+    .match(/[\s\S]{1,2000}/g)
+    ?.map((chunk) => ({
+      type: "text",
+      text: { content: chunk },
+    })) || [{ type: "text", text: { content: "" } }];
+
 const notionCallout = (icon, text) => ({
   object: "block",
   type: "callout",
   callout: {
     icon,
     color: "gray_background",
-    rich_text: [{ type: "text", text: { content: text } }],
+    rich_text: toRichText(text),
   },
 });
 
@@ -290,9 +300,266 @@ const workIcon = () =>
     ? customEmojiIcon(NOTION_CUSTOM_EMOJI_ID)
     : emojiIcon("💻");
 
+const buildTimeboxSnapshot = (schedType, blocks, tasks, wrapup) => ({
+  schedType,
+  blocks,
+  tasks,
+  wrapup,
+});
+
+const notionRichTextToPlain = (richText = []) =>
+  richText.map((item) => item.plain_text || item.text?.content || "").join("");
+
+const parseSnapshotText = (text) => {
+  try {
+    const parsed = JSON.parse(text);
+    if (!parsed || typeof parsed !== "object") return null;
+    if (parsed.schedType !== "standup" && parsed.schedType !== "noStandup") {
+      return null;
+    }
+    return {
+      schedType: parsed.schedType,
+      blocks: Array.isArray(parsed.blocks) ? parsed.blocks : [],
+      tasks: parsed.tasks && typeof parsed.tasks === "object" ? parsed.tasks : {},
+      wrapup:
+        parsed.wrapup && typeof parsed.wrapup === "object"
+          ? { left: parsed.wrapup.left || "", next: parsed.wrapup.next || "" }
+          : { left: "", next: "" },
+    };
+  } catch {
+    return null;
+  }
+};
+
+const workdayHour = (h) => (h >= 1 && h <= 8 ? h + 12 : h);
+
+const parseTimeRange = (text) => {
+  const match = text.match(/^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2}):\s*(.+)$/);
+  if (!match) return null;
+  const [, sh, sm, eh, em, label] = match;
+  return {
+    start: workdayHour(Number(sh)) * 60 + Number(sm),
+    end: workdayHour(Number(eh)) * 60 + Number(em),
+    label: label.trim(),
+  };
+};
+
+const inferSchedTypeFromBlocks = (parsedBlocks) => {
+  const plan = parsedBlocks.find((block) => block.id === "plan");
+  return plan && plan.end - plan.start === 30 ? "standup" : "noStandup";
+};
+
+const inferBlockType = (label, childText) => {
+  if (label === "Wrap up") return "wrapup";
+  if (label === "Lunch" || label === "Break") return "break";
+  if (label.includes("Flex")) return "flex-work";
+  if (childText.startsWith("Notes:")) return "meeting";
+  return "work";
+};
+
+const parseLegacyNotionBlocks = (notionBlocks) => {
+  const parsedBlocks = [];
+  const tasks = {};
+  const wrapup = { left: "", next: "" };
+
+  for (const block of notionBlocks) {
+    if (block.type !== "toggle") continue;
+    const title = notionRichTextToPlain(block.toggle?.rich_text);
+    if (title === TIMEBOX_STATE_LABEL) continue;
+
+    const parsedTitle = parseTimeRange(title);
+    if (!parsedTitle) continue;
+
+    const childText = (block.children || [])
+      .filter((child) => child.type === "callout")
+      .map((child) => notionRichTextToPlain(child.callout?.rich_text))
+      .join("\n");
+    const type = inferBlockType(parsedTitle.label, childText);
+    const idMap = {
+      "Plan the day": "plan",
+      Standup: "sdup",
+      "Block A": "A",
+      "Block B": "B",
+      "Block C": "C",
+      Lunch: "lunch",
+      "Wrap up": "wrap",
+    };
+    const fallbackBreakId = parsedTitle.start < toMin(12, 0) ? "brk1" : "brk2";
+    const id =
+      type === "meeting" && parsedTitle.label !== "Standup"
+        ? `mtg_${parsedTitle.start}_${parsedTitle.end}_${parsedTitle.label}`
+        : parsedTitle.label.includes("Block D")
+          ? "D"
+          : idMap[parsedTitle.label] || fallbackBreakId;
+
+    parsedBlocks.push({
+      id,
+      label: parsedTitle.label,
+      start: parsedTitle.start,
+      end: parsedTitle.end,
+      type,
+    });
+
+    if (type === "work" || type === "flex-work") {
+      tasks[id] = childText;
+    } else if (type === "meeting") {
+      tasks[id] = childText.replace(/^Notes:\n?/, "");
+    } else if (type === "wrapup") {
+      const leftMatch = childText.match(/Where I left off:\n([\s\S]*?)(?:\nWhat's next:|$)/);
+      const nextMatch = childText.match(/What's next:\n([\s\S]*)$/);
+      wrapup.left = leftMatch?.[1]?.trim() || "";
+      wrapup.next = nextMatch?.[1]?.trim() || "";
+    }
+  }
+
+  if (!parsedBlocks.length) return null;
+  return {
+    schedType: inferSchedTypeFromBlocks(parsedBlocks),
+    blocks: parsedBlocks,
+    tasks,
+    wrapup,
+  };
+};
+
+const buildStateBlock = (snapshot) => ({
+  object: "block",
+  type: "toggle",
+  toggle: {
+    rich_text: [{ type: "text", text: { content: TIMEBOX_STATE_LABEL } }],
+    children: [
+      {
+        object: "block",
+        type: "code",
+        code: {
+          rich_text: toRichText(JSON.stringify(snapshot)),
+          language: "json",
+        },
+      },
+    ],
+  },
+});
+
+const extractSnapshotFromBlocks = (notionBlocks) => {
+  const stateToggle = notionBlocks.find(
+    (block) =>
+      block.type === "toggle" &&
+      notionRichTextToPlain(block.toggle?.rich_text) === TIMEBOX_STATE_LABEL,
+  );
+  const codeBlock = stateToggle?.children?.find((child) => child.type === "code");
+  const snapshot = codeBlock
+    ? parseSnapshotText(notionRichTextToPlain(codeBlock.code?.rich_text))
+    : null;
+  return snapshot || parseLegacyNotionBlocks(notionBlocks);
+};
+
+const notionHeaders = (token) => ({
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${token}`,
+  "Notion-Version": NOTION_VERSION,
+});
+
+const notionFetch = async (path, token, options = {}) =>
+  fetch(`/api/notion${path}`, {
+    ...options,
+    headers: {
+      ...notionHeaders(token),
+      ...(options.headers || {}),
+    },
+  });
+
+const fetchAllBlockChildren = async (blockId, token) => {
+  const results = [];
+  let cursor = null;
+
+  do {
+    const query = cursor ? `?start_cursor=${encodeURIComponent(cursor)}` : "";
+    const res = await notionFetch(`/blocks/${blockId}/children${query}`, token, {
+      method: "GET",
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `Failed to fetch block children (${res.status})`);
+    }
+    const data = await res.json();
+    results.push(...(data.results || []));
+    cursor = data.has_more ? data.next_cursor : null;
+  } while (cursor);
+
+  return results;
+};
+
+const fetchBlockChildrenRecursive = async (notionBlocks, token) =>
+  Promise.all(
+    notionBlocks.map(async (block) => {
+      if (!block.has_children) return block;
+      const children = await fetchAllBlockChildren(block.id, token);
+      return {
+        ...block,
+        children: await fetchBlockChildrenRecursive(children, token),
+      };
+    }),
+  );
+
+const queryTodayNotionEntry = async (token) => {
+  const dbId = import.meta.env.VITE_NOTION_DATABASE_ID;
+  if (!token || !dbId) return null;
+
+  const dateProp = import.meta.env.VITE_NOTION_DATE_PROP || "date";
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const res = await notionFetch(`/databases/${dbId}/query`, token, {
+    method: "POST",
+    body: JSON.stringify({
+      filter: {
+        property: dateProp,
+        date: { equals: todayISO },
+      },
+      page_size: 1,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `Failed to query Notion (${res.status})`);
+  }
+
+  const data = await res.json();
+  return data.results?.[0] || null;
+};
+
+const loadTodayFromNotion = async (token) => {
+  const page = await queryTodayNotionEntry(token);
+  if (!page) return null;
+
+  const children = await fetchAllBlockChildren(page.id, token);
+  const fullChildren = await fetchBlockChildrenRecursive(children, token);
+  return {
+    pageId: page.id,
+    snapshot: extractSnapshotFromBlocks(fullChildren),
+  };
+};
+
+const replaceNotionPageContent = async (pageId, token, children) => {
+  const existingChildren = await fetchAllBlockChildren(pageId, token);
+  for (const child of existingChildren) {
+    const res = await notionFetch(`/blocks/${child.id}`, token, { method: "DELETE" });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `Failed to clear page content (${res.status})`);
+    }
+  }
+
+  const res = await notionFetch(`/blocks/${pageId}/children`, token, {
+    method: "PATCH",
+    body: JSON.stringify({ children }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `Failed to append page content (${res.status})`);
+  }
+};
+
 const buildNotionPayload = (parentPageId, schedType, blocks, tasks, wrapup) => {
   const modeLabel = schedType === "standup" ? "M" : "T";
-  const children = [];
+  const children = [buildStateBlock(buildTimeboxSnapshot(schedType, blocks, tasks, wrapup))];
 
   for (const b of blocks) {
     const timeStr = `${fmtTimeShort(b.start)}-${fmtTimeShort(b.end)}`;
@@ -395,6 +662,7 @@ export default function App() {
   const [blocks, setBlocks] = useState([]);
   const [tasks, setTasks] = useState({});
   const [wrapup, setWrapup] = useState({ left: "", next: "" });
+  const [notionPageId, setNotionPageId] = useState(null);
   const [now, setNow] = useState(getNow());
   const [notifPerm, setNotifPerm] = useState(() => {
     if (!("Notification" in window)) return false;
@@ -420,6 +688,26 @@ export default function App() {
     let cancelled = false;
 
     const applyConfig = async () => {
+      const token = import.meta.env.VITE_NOTION_TOKEN;
+      let notionState = null;
+      try {
+        notionState = await loadTodayFromNotion(token);
+      } catch {
+        notionState = null;
+      }
+      if (cancelled) return;
+
+      if (notionState?.snapshot) {
+        setSchedType(notionState.snapshot.schedType);
+        setBlocks(notionState.snapshot.blocks);
+        setTasks(notionState.snapshot.tasks);
+        setWrapup(notionState.snapshot.wrapup);
+        setNotionPageId(notionState.pageId);
+        notified.current.clear();
+        setConfigStatus("ready");
+        return;
+      }
+
       const config = await loadScheduleConfig();
       if (cancelled) return;
 
@@ -435,6 +723,7 @@ export default function App() {
       setBlocks(nextState.blocks);
       setTasks(nextState.tasks);
       setWrapup(nextState.wrapup);
+      setNotionPageId(null);
       notified.current.clear();
       setConfigStatus("ready");
     };
@@ -473,6 +762,7 @@ export default function App() {
     setBlocks(nextState.blocks);
     setTasks(nextState.tasks);
     setWrapup(nextState.wrapup);
+    setNotionPageId(null);
     notified.current.clear();
   };
 
@@ -612,22 +902,36 @@ export default function App() {
         tasks,
         wrapup,
       );
-      const res = await fetch("/api/notion/pages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-          "Notion-Version": "2022-06-28",
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        if (res.status === 401) setExportStatus("bad-token");
-        else if (res.status === 404) setExportStatus("bad-parent");
-        else setExportStatus(`error: ${err.message || res.status}`);
+
+      if (notionPageId) {
+        const updateRes = await notionFetch(`/pages/${notionPageId}`, token, {
+          method: "PATCH",
+          body: JSON.stringify({ properties: payload.properties }),
+        });
+        if (!updateRes.ok) {
+          const err = await updateRes.json().catch(() => ({}));
+          if (updateRes.status === 401) setExportStatus("bad-token");
+          else if (updateRes.status === 404) setExportStatus("bad-parent");
+          else setExportStatus(`error: ${err.message || updateRes.status}`);
+        } else {
+          await replaceNotionPageContent(notionPageId, token, payload.children);
+          setExportStatus("sent");
+        }
       } else {
-        setExportStatus("sent");
+        const createRes = await notionFetch("/pages", token, {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        if (!createRes.ok) {
+          const err = await createRes.json().catch(() => ({}));
+          if (createRes.status === 401) setExportStatus("bad-token");
+          else if (createRes.status === 404) setExportStatus("bad-parent");
+          else setExportStatus(`error: ${err.message || createRes.status}`);
+        } else {
+          const created = await createRes.json();
+          setNotionPageId(created.id);
+          setExportStatus("sent");
+        }
       }
     } catch {
       setExportStatus("network-error");
