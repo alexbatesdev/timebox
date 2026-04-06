@@ -794,20 +794,29 @@ export default function App() {
     return idx;
   };
 
-  const shiftFuture = (delta) => {
+  const resizeCurrentBlock = (delta) => {
     const ci = getCurIdx();
     setBlocks((prev) =>
       prev.map((b, i) => {
-        if (i === ci) {
-          // Breaks shift the whole block (starting late); work blocks grow/shrink
-          if (b.type === "break")
-            return { ...b, start: b.start + delta, end: b.end + delta };
-          return { ...b, end: b.end + delta };
-        }
+        if (i === ci) return { ...b, end: b.end + delta };
         if (i > ci) return { ...b, start: b.start + delta, end: b.end + delta };
         return b;
       }),
     );
+  };
+
+  const shiftCurrentBlock = (delta) => {
+    const ci = getCurIdx();
+    setBlocks((prev) => {
+      const flexIdx = prev.findIndex((b) => b.type === "flex-work");
+      return prev.map((b, i) => {
+        if (i === ci - 1) return { ...b, end: b.end + delta };
+        if (i >= ci && (flexIdx < 0 || i < flexIdx))
+          return { ...b, start: b.start + delta, end: b.end + delta };
+        if (i === flexIdx) return { ...b, start: b.start + delta };
+        return b;
+      });
+    });
   };
 
   /* ── add meeting ─────────────────────────────────────── */
@@ -1185,12 +1194,12 @@ export default function App() {
             <span
               style={{ fontSize: "11px", color: "#4b5563", marginRight: "2px" }}
             >
-              Shift rest of day:
+              Resize:
             </span>
             {[-15, -10, -5].map((d) => (
               <button
                 key={d}
-                onClick={() => shiftFuture(d)}
+                onClick={() => resizeCurrentBlock(d)}
                 style={{
                   padding: "4px 9px",
                   background: "#ffffff0a",
@@ -1208,7 +1217,58 @@ export default function App() {
             {[5, 10, 15].map((d) => (
               <button
                 key={d}
-                onClick={() => shiftFuture(d)}
+                onClick={() => resizeCurrentBlock(d)}
+                style={{
+                  padding: "4px 9px",
+                  background: "#ffffff0a",
+                  border: "1px solid #ef444440",
+                  color: "#fca5a5",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  fontWeight: "600",
+                }}
+              >
+                +{d}m
+              </button>
+            ))}
+          </div>
+          <div
+            style={{
+              display: "flex",
+              gap: "6px",
+              alignItems: "center",
+              marginTop: "6px",
+              flexWrap: "wrap",
+            }}
+          >
+            <span
+              style={{ fontSize: "11px", color: "#4b5563", marginRight: "2px" }}
+            >
+              Shift:
+            </span>
+            {[-15, -10, -5].map((d) => (
+              <button
+                key={d}
+                onClick={() => shiftCurrentBlock(d)}
+                style={{
+                  padding: "4px 9px",
+                  background: "#ffffff0a",
+                  border: "1px solid #22c55e40",
+                  color: "#86efac",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  fontWeight: "600",
+                }}
+              >
+                {d}m
+              </button>
+            ))}
+            {[5, 10, 15].map((d) => (
+              <button
+                key={d}
+                onClick={() => shiftCurrentBlock(d)}
                 style={{
                   padding: "4px 9px",
                   background: "#ffffff0a",
