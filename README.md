@@ -1,16 +1,32 @@
-# React + Vite
+# Timebox
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Personal daily scheduler built with React and Vite.
 
-Currently, two official plugins are available:
+## Schedule Selection
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+The app now chooses the schedule type automatically from [public/schedule-config.json](/Users/alex.bates/Code/timebox/public/schedule-config.json).
 
-## React Compiler
+Example:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```json
+{
+  "defaultType": "noStandup",
+  "days": {
+    "monday": "standup",
+    "tuesday": "noStandup",
+    "wednesday": "standup",
+    "thursday": "noStandup",
+    "friday": "standup",
+    "saturday": "noStandup",
+    "sunday": "noStandup"
+  }
+}
+```
 
-## Expanding the ESLint configuration
+Allowed values are `standup` and `noStandup`. If a day is omitted or invalid, the app falls back to `defaultType`.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Commands
+
+- `npm run dev`
+- `npm run build`
+- `npm run lint`

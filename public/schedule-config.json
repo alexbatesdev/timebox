@@ -1,0 +1,12 @@
+{
+  "defaultType": "noStandup",
+  "days": {
+    "monday": "standup",
+    "tuesday": "noStandup",
+    "wednesday": "standup",
+    "thursday": "noStandup",
+    "friday": "noStandup",
+    "saturday": "noStandup",
+    "sunday": "noStandup"
+  }
+}

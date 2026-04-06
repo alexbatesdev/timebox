@@ -20,6 +20,8 @@ const fmtDate = () =>
     day: "numeric",
   });
 const todayKey = () => `timebox-${new Date().toISOString().slice(0, 10)}`;
+const getWeekdayKey = () =>
+  new Date().toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
 
 /* ── localStorage ────────────────────────────────────────── */
 const loadState = () => {
@@ -39,40 +41,201 @@ const saveState = (state) => {
 };
 const clearState = () => localStorage.removeItem(todayKey());
 
+const SCHEDULE_CONFIG = {
+  defaultType: "noStandup",
+  days: {
+    monday: "standup",
+    tuesday: "noStandup",
+    wednesday: "standup",
+    thursday: "noStandup",
+    friday: "noStandup",
+    saturday: "noStandup",
+    sunday: "noStandup",
+  },
+};
+
+const loadScheduleConfig = async () => {
+  try {
+    const res = await fetch("/schedule-config.json", { cache: "no-store" });
+    if (!res.ok) return SCHEDULE_CONFIG;
+    const data = await res.json();
+    return {
+      defaultType: data.defaultType === "standup" ? "standup" : "noStandup",
+      days: { ...SCHEDULE_CONFIG.days, ...(data.days || {}) },
+    };
+  } catch {
+    return SCHEDULE_CONFIG;
+  }
+};
+
 /* ── schedules ───────────────────────────────────────────── */
 const SCHEDULES = {
   standup: [
-    { id: "plan", label: "Plan the day", start: toMin(9, 0), end: toMin(9, 30), type: "work" },
-    { id: "sdup", label: "Standup", start: toMin(9, 30), end: toMin(9, 45), type: "meeting" },
-    { id: "A", label: "Block A", start: toMin(9, 45), end: toMin(11, 0), type: "work" },
-    { id: "brk1", label: "Break", start: toMin(11, 0), end: toMin(11, 15), type: "break" },
-    { id: "B", label: "Block B", start: toMin(11, 15), end: toMin(12, 45), type: "work" },
-    { id: "lunch", label: "Lunch", start: toMin(12, 45), end: toMin(13, 15), type: "break" },
-    { id: "C", label: "Block C", start: toMin(13, 15), end: toMin(14, 45), type: "work" },
-    { id: "brk2", label: "Break", start: toMin(14, 45), end: toMin(15, 0), type: "break" },
-    { id: "D", label: "Block D — Flex", start: toMin(15, 0), end: toMin(16, 45), type: "flex-work" },
-    { id: "wrap", label: "Wrap up", start: toMin(16, 45), end: toMin(17, 0), type: "wrapup" },
+    {
+      id: "plan",
+      label: "Plan the day",
+      start: toMin(9, 0),
+      end: toMin(9, 30),
+      type: "work",
+    },
+    {
+      id: "sdup",
+      label: "Standup",
+      start: toMin(9, 30),
+      end: toMin(10, 0),
+      type: "meeting",
+    },
+    {
+      id: "A",
+      label: "Block A",
+      start: toMin(10, 0),
+      end: toMin(11, 0),
+      type: "work",
+    },
+    {
+      id: "brk1",
+      label: "Break",
+      start: toMin(11, 0),
+      end: toMin(11, 15),
+      type: "break",
+    },
+    {
+      id: "B",
+      label: "Block B",
+      start: toMin(11, 15),
+      end: toMin(12, 45),
+      type: "work",
+    },
+    {
+      id: "lunch",
+      label: "Lunch",
+      start: toMin(12, 45),
+      end: toMin(13, 15),
+      type: "break",
+    },
+    {
+      id: "C",
+      label: "Block C",
+      start: toMin(13, 15),
+      end: toMin(14, 45),
+      type: "work",
+    },
+    {
+      id: "brk2",
+      label: "Break",
+      start: toMin(14, 45),
+      end: toMin(15, 0),
+      type: "break",
+    },
+    {
+      id: "D",
+      label: "Block D — Flex",
+      start: toMin(15, 0),
+      end: toMin(16, 45),
+      type: "flex-work",
+    },
+    {
+      id: "wrap",
+      label: "Wrap up",
+      start: toMin(16, 45),
+      end: toMin(17, 0),
+      type: "wrapup",
+    },
   ],
   noStandup: [
-    { id: "plan", label: "Plan the day", start: toMin(9, 0), end: toMin(9, 15), type: "work" },
-    { id: "A", label: "Block A", start: toMin(9, 15), end: toMin(11, 0), type: "work" },
-    { id: "brk1", label: "Break", start: toMin(11, 0), end: toMin(11, 15), type: "break" },
-    { id: "B", label: "Block B", start: toMin(11, 15), end: toMin(12, 45), type: "work" },
-    { id: "lunch", label: "Lunch", start: toMin(12, 45), end: toMin(13, 15), type: "break" },
-    { id: "C", label: "Block C", start: toMin(13, 15), end: toMin(14, 45), type: "work" },
-    { id: "brk2", label: "Break", start: toMin(14, 45), end: toMin(15, 0), type: "break" },
-    { id: "D", label: "Block D — Flex", start: toMin(15, 0), end: toMin(16, 45), type: "flex-work" },
-    { id: "wrap", label: "Wrap up", start: toMin(16, 45), end: toMin(17, 0), type: "wrapup" },
+    {
+      id: "plan",
+      label: "Plan the day",
+      start: toMin(9, 0),
+      end: toMin(9, 15),
+      type: "work",
+    },
+    {
+      id: "A",
+      label: "Block A",
+      start: toMin(9, 15),
+      end: toMin(11, 0),
+      type: "work",
+    },
+    {
+      id: "brk1",
+      label: "Break",
+      start: toMin(11, 0),
+      end: toMin(11, 15),
+      type: "break",
+    },
+    {
+      id: "B",
+      label: "Block B",
+      start: toMin(11, 15),
+      end: toMin(12, 45),
+      type: "work",
+    },
+    {
+      id: "lunch",
+      label: "Lunch",
+      start: toMin(12, 45),
+      end: toMin(13, 15),
+      type: "break",
+    },
+    {
+      id: "C",
+      label: "Block C",
+      start: toMin(13, 15),
+      end: toMin(14, 45),
+      type: "work",
+    },
+    {
+      id: "brk2",
+      label: "Break",
+      start: toMin(14, 45),
+      end: toMin(15, 0),
+      type: "break",
+    },
+    {
+      id: "D",
+      label: "Block D — Flex",
+      start: toMin(15, 0),
+      end: toMin(16, 45),
+      type: "flex-work",
+    },
+    {
+      id: "wrap",
+      label: "Wrap up",
+      start: toMin(16, 45),
+      end: toMin(17, 0),
+      type: "wrapup",
+    },
   ],
 };
 
 /* ── colors ───────────────────────────────────────────────── */
 const TC = {
   work: { bg: "#0f2040", border: "#3b82f6", accent: "#93c5fd", dot: "#3b82f6" },
-  "flex-work": { bg: "#0f2040", border: "#60a5fa", accent: "#bfdbfe", dot: "#60a5fa" },
-  break: { bg: "#0d2a1a", border: "#22c55e", accent: "#86efac", dot: "#22c55e" },
-  meeting: { bg: "#1e0f3a", border: "#a855f7", accent: "#d8b4fe", dot: "#a855f7" },
-  wrapup: { bg: "#2a1500", border: "#f97316", accent: "#fdba74", dot: "#f97316" },
+  "flex-work": {
+    bg: "#0f2040",
+    border: "#60a5fa",
+    accent: "#bfdbfe",
+    dot: "#60a5fa",
+  },
+  break: {
+    bg: "#0d2a1a",
+    border: "#22c55e",
+    accent: "#86efac",
+    dot: "#22c55e",
+  },
+  meeting: {
+    bg: "#1e0f3a",
+    border: "#a855f7",
+    accent: "#d8b4fe",
+    dot: "#a855f7",
+  },
+  wrapup: {
+    bg: "#2a1500",
+    border: "#f97316",
+    accent: "#fdba74",
+    dot: "#f97316",
+  },
 };
 
 /* ── notion export helpers ────────────────────────────────── */
@@ -104,7 +267,8 @@ const fmtTimeShort = (mins) => {
   return `${h12}:${String(m).padStart(2, "0")}`;
 };
 
-const NOTION_CUSTOM_EMOJI_ID = import.meta.env.VITE_NOTION_CUSTOM_EMOJI_ID || "";
+const NOTION_CUSTOM_EMOJI_ID =
+  import.meta.env.VITE_NOTION_CUSTOM_EMOJI_ID || "";
 
 const notionCallout = (icon, text) => ({
   object: "block",
@@ -117,7 +281,10 @@ const notionCallout = (icon, text) => ({
 });
 
 const emojiIcon = (emoji) => ({ type: "emoji", emoji });
-const customEmojiIcon = (id) => ({ type: "custom_emoji", custom_emoji: { id } });
+const customEmojiIcon = (id) => ({
+  type: "custom_emoji",
+  custom_emoji: { id },
+});
 const workIcon = () =>
   NOTION_CUSTOM_EMOJI_ID
     ? customEmojiIcon(NOTION_CUSTOM_EMOJI_ID)
@@ -135,10 +302,19 @@ const buildNotionPayload = (parentPageId, schedType, blocks, tasks, wrapup) => {
     if (b.type === "work" || b.type === "flex-work") {
       callouts.push(notionCallout(workIcon(), task || ""));
     } else if (b.type === "meeting") {
-      callouts.push(notionCallout(emojiIcon("✏️"), task ? `Notes:\n${task}` : "Notes:"));
+      callouts.push(
+        notionCallout(emojiIcon("✏️"), task ? `Notes:\n${task}` : "Notes:"),
+      );
     } else if (b.type === "wrapup") {
-      callouts.push(notionCallout(emojiIcon("💻"), `Where I left off:\n${wrapup.left || ""}`));
-      callouts.push(notionCallout(emojiIcon("💾"), `What's next:\n${wrapup.next || ""}`));
+      callouts.push(
+        notionCallout(
+          emojiIcon("💻"),
+          `Where I left off:\n${wrapup.left || ""}`,
+        ),
+      );
+      callouts.push(
+        notionCallout(emojiIcon("💾"), `What's next:\n${wrapup.next || ""}`),
+      );
     }
     // break blocks get no callouts
 
@@ -146,7 +322,9 @@ const buildNotionPayload = (parentPageId, schedType, blocks, tasks, wrapup) => {
       object: "block",
       type: "toggle",
       toggle: {
-        rich_text: [{ type: "text", text: { content: `${timeStr}: ${b.label}` } }],
+        rich_text: [
+          { type: "text", text: { content: `${timeStr}: ${b.label}` } },
+        ],
       },
     };
     if (callouts.length > 0) {
@@ -184,18 +362,46 @@ const buildNotionPayload = (parentPageId, schedType, blocks, tasks, wrapup) => {
   };
 };
 
+const createScheduleState = (type) => {
+  const blocks = SCHEDULES[type].map((b) => ({ ...b }));
+  const tasks = {};
+  blocks.forEach((b) => {
+    tasks[b.id] = "";
+  });
+  return {
+    schedType: type,
+    blocks,
+    tasks,
+    wrapup: { left: "", next: "" },
+  };
+};
+
+const resolveInitialState = (type) => {
+  const saved = loadState();
+  if (saved?.schedType === type) {
+    return {
+      schedType: saved.schedType,
+      blocks: saved.blocks ?? [],
+      tasks: saved.tasks ?? {},
+      wrapup: saved.wrapup ?? { left: "", next: "" },
+    };
+  }
+  return createScheduleState(type);
+};
+
 /* ── app ──────────────────────────────────────────────────── */
 export default function App() {
-  const [schedType, setSchedType] = useState(() => loadState()?.schedType ?? null);
-  const [blocks, setBlocks] = useState(() => loadState()?.blocks ?? []);
-  const [tasks, setTasks] = useState(() => loadState()?.tasks ?? {});
-  const [wrapup, setWrapup] = useState(() => loadState()?.wrapup ?? { left: "", next: "" });
+  const [schedType, setSchedType] = useState(null);
+  const [blocks, setBlocks] = useState([]);
+  const [tasks, setTasks] = useState({});
+  const [wrapup, setWrapup] = useState({ left: "", next: "" });
   const [now, setNow] = useState(getNow());
   const [notifPerm, setNotifPerm] = useState(() => {
     if (!("Notification" in window)) return false;
     return Notification.permission === "granted";
   });
   const notified = useRef(new Set());
+  const [configStatus, setConfigStatus] = useState("loading");
 
   const [showMeetingForm, setShowMeetingForm] = useState(false);
   const [mtgLabel, setMtgLabel] = useState("");
@@ -209,6 +415,36 @@ export default function App() {
     if (schedType === null) return;
     saveState({ schedType, blocks, tasks, wrapup });
   }, [schedType, blocks, tasks, wrapup]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const applyConfig = async () => {
+      const config = await loadScheduleConfig();
+      if (cancelled) return;
+
+      const weekday = getWeekdayKey();
+      const nextType =
+        config.days[weekday] === "standup" ||
+        config.days[weekday] === "noStandup"
+          ? config.days[weekday]
+          : config.defaultType;
+      const nextState = resolveInitialState(nextType);
+
+      setSchedType(nextState.schedType);
+      setBlocks(nextState.blocks);
+      setTasks(nextState.tasks);
+      setWrapup(nextState.wrapup);
+      notified.current.clear();
+      setConfigStatus("ready");
+    };
+
+    applyConfig();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   /* clock tick */
   useEffect(() => {
@@ -232,23 +468,25 @@ export default function App() {
   }, [now, blocks, tasks, notifPerm]);
 
   const initSchedule = (type) => {
-    setSchedType(type);
-    setBlocks(SCHEDULES[type].map((b) => ({ ...b })));
-    const t = {};
-    SCHEDULES[type].forEach((b) => {
-      t[b.id] = "";
-    });
-    setTasks(t);
-    setWrapup({ left: "", next: "" });
+    const nextState = createScheduleState(type);
+    setSchedType(nextState.schedType);
+    setBlocks(nextState.blocks);
+    setTasks(nextState.tasks);
+    setWrapup(nextState.wrapup);
     notified.current.clear();
   };
 
-  const changeSchedule = () => {
+  const reloadScheduleFromConfig = async () => {
     clearState();
-    setSchedType(null);
-    setBlocks([]);
-    setTasks({});
-    setWrapup({ left: "", next: "" });
+    setConfigStatus("loading");
+    const config = await loadScheduleConfig();
+    const weekday = getWeekdayKey();
+    const nextType =
+      config.days[weekday] === "standup" || config.days[weekday] === "noStandup"
+        ? config.days[weekday]
+        : config.defaultType;
+    initSchedule(nextType);
+    setConfigStatus("ready");
   };
 
   const requestNotif = async () => {
@@ -318,7 +556,11 @@ export default function App() {
               newBlocks[i + 1] = { ...next, start: curr.end };
             } else {
               const dur = next.end - next.start;
-              newBlocks[i + 1] = { ...next, start: curr.end, end: curr.end + dur };
+              newBlocks[i + 1] = {
+                ...next,
+                start: curr.end,
+                end: curr.end + dur,
+              };
             }
             changed = true;
           }
@@ -363,7 +605,13 @@ export default function App() {
     }
     setExportStatus("sending");
     try {
-      const payload = buildNotionPayload(parentPage, schedType, blocks, tasks, wrapup);
+      const payload = buildNotionPayload(
+        parentPage,
+        schedType,
+        blocks,
+        tasks,
+        wrapup,
+      );
       const res = await fetch("/api/notion/pages", {
         method: "POST",
         headers: {
@@ -388,7 +636,7 @@ export default function App() {
   };
 
   /* ── render: schedule picker ────────────────────────── */
-  if (!schedType) {
+  if (configStatus === "loading" || !schedType) {
     return (
       <div
         style={{
@@ -402,54 +650,18 @@ export default function App() {
       >
         <div style={{ textAlign: "center", color: "#e5e7eb", padding: "24px" }}>
           <div style={{ fontSize: "32px", marginBottom: "8px" }}>📅</div>
-          <div style={{ fontSize: "24px", fontWeight: "700", marginBottom: "6px" }}>
+          <div
+            style={{ fontSize: "24px", fontWeight: "700", marginBottom: "6px" }}
+          >
             Daily Timebox
           </div>
-          <div style={{ color: "#6b7280", fontSize: "14px", marginBottom: "36px" }}>
+          <div
+            style={{ color: "#6b7280", fontSize: "14px", marginBottom: "36px" }}
+          >
             {fmtDate()}
           </div>
-          <div style={{ color: "#9ca3af", fontSize: "14px", marginBottom: "16px" }}>
-            What kind of day is it?
-          </div>
-          <div
-            style={{
-              display: "flex",
-              gap: "14px",
-              justifyContent: "center",
-              flexWrap: "wrap",
-            }}
-          >
-            <button
-              onClick={() => initSchedule("standup")}
-              style={{
-                padding: "16px 28px",
-                background: "#0f2040",
-                border: "2px solid #3b82f6",
-                color: "#93c5fd",
-                borderRadius: "14px",
-                cursor: "pointer",
-                fontSize: "15px",
-                fontWeight: "600",
-                transition: "opacity .15s",
-              }}
-            >
-              📢 Standup Day
-            </button>
-            <button
-              onClick={() => initSchedule("noStandup")}
-              style={{
-                padding: "16px 28px",
-                background: "#0d2a1a",
-                border: "2px solid #22c55e",
-                color: "#86efac",
-                borderRadius: "14px",
-                cursor: "pointer",
-                fontSize: "15px",
-                fontWeight: "600",
-              }}
-            >
-              🤫 No Standup
-            </button>
+          <div style={{ color: "#9ca3af", fontSize: "14px" }}>
+            Loading today&apos;s schedule…
           </div>
         </div>
       </div>
@@ -462,7 +674,10 @@ export default function App() {
   const tc = TC[cur?.type] || TC.work;
   const minsLeft = cur ? Math.max(0, cur.end - now) : 0;
   const progress = cur
-    ? Math.min(100, Math.max(0, ((now - cur.start) / (cur.end - cur.start)) * 100))
+    ? Math.min(
+        100,
+        Math.max(0, ((now - cur.start) / (cur.end - cur.start)) * 100),
+      )
     : 0;
   const wrapBlock = blocks.find((b) => b.type === "wrapup");
   const hasFlexTime = blocks.some((b) => b.type === "flex-work");
@@ -472,7 +687,8 @@ export default function App() {
     copied: "✅ Copied to clipboard!",
     sent: "✅ Sent to Notion!",
     sending: "⏳ Sending…",
-    "missing-env": "⚠️ Set VITE_NOTION_TOKEN and VITE_NOTION_PARENT_PAGE env vars",
+    "missing-env":
+      "⚠️ Set VITE_NOTION_TOKEN and VITE_NOTION_PARENT_PAGE env vars",
     "bad-token": "⚠️ Invalid Notion token",
     "bad-parent": "⚠️ Parent page not found",
     "network-error": "⚠️ Network error — is the dev server running?",
@@ -504,7 +720,7 @@ export default function App() {
           <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "2px" }}>
             {schedType === "standup" ? "📢 Standup" : "🤫 No Standup"}
             <button
-              onClick={changeSchedule}
+              onClick={reloadScheduleFromConfig}
               style={{
                 marginLeft: "8px",
                 fontSize: "11px",
@@ -515,7 +731,7 @@ export default function App() {
                 textDecoration: "underline",
               }}
             >
-              change
+              reload config
             </button>
           </div>
         </div>
@@ -545,7 +761,9 @@ export default function App() {
             </button>
           )}
           {notifPerm && (
-            <div style={{ fontSize: "11px", color: "#22c55e" }}>🔔 Alerts on</div>
+            <div style={{ fontSize: "11px", color: "#22c55e" }}>
+              🔔 Alerts on
+            </div>
           )}
         </div>
       </div>
@@ -581,10 +799,18 @@ export default function App() {
               >
                 Now
               </div>
-              <div style={{ fontSize: "22px", fontWeight: "700", color: "#f9fafb" }}>
+              <div
+                style={{
+                  fontSize: "22px",
+                  fontWeight: "700",
+                  color: "#f9fafb",
+                }}
+              >
                 {cur.label}
               </div>
-              <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "2px" }}>
+              <div
+                style={{ fontSize: "12px", color: "#6b7280", marginTop: "2px" }}
+              >
                 {fmtTime(cur.start)} – {fmtTime(cur.end)}
               </div>
             </div>
@@ -625,7 +851,9 @@ export default function App() {
           {isWorkType(cur.type) && (
             <input
               value={tasks[cur.id] || ""}
-              onChange={(e) => setTasks((p) => ({ ...p, [cur.id]: e.target.value }))}
+              onChange={(e) =>
+                setTasks((p) => ({ ...p, [cur.id]: e.target.value }))
+              }
               placeholder="What are you working on?"
               style={{
                 width: "100%",
@@ -650,7 +878,9 @@ export default function App() {
               flexWrap: "wrap",
             }}
           >
-            <span style={{ fontSize: "11px", color: "#4b5563", marginRight: "2px" }}>
+            <span
+              style={{ fontSize: "11px", color: "#4b5563", marginRight: "2px" }}
+            >
               Shift rest of day:
             </span>
             {[-15, -10, -5].map((d) => (
@@ -715,7 +945,13 @@ export default function App() {
           >
             <span style={{ color: "#a855f7" }}>+</span> Add Meeting
             {!hasFlexTime && (
-              <span style={{ color: "#ef4444", fontSize: "11px", marginLeft: "4px" }}>
+              <span
+                style={{
+                  color: "#ef4444",
+                  fontSize: "11px",
+                  marginLeft: "4px",
+                }}
+              >
                 (no flex time left)
               </span>
             )}
@@ -737,7 +973,13 @@ export default function App() {
                 marginBottom: "10px",
               }}
             >
-              <div style={{ fontSize: "13px", fontWeight: "600", color: "#d8b4fe" }}>
+              <div
+                style={{
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  color: "#d8b4fe",
+                }}
+              >
                 Add Meeting
               </div>
               <button
@@ -772,7 +1014,13 @@ export default function App() {
             />
             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
               <div style={{ flex: 1, minWidth: "120px" }}>
-                <div style={{ fontSize: "11px", color: "#6b7280", marginBottom: "3px" }}>
+                <div
+                  style={{
+                    fontSize: "11px",
+                    color: "#6b7280",
+                    marginBottom: "3px",
+                  }}
+                >
                   Start time
                 </div>
                 <div style={{ display: "flex", gap: "4px" }}>
@@ -819,7 +1067,13 @@ export default function App() {
                 </div>
               </div>
               <div style={{ minWidth: "100px" }}>
-                <div style={{ fontSize: "11px", color: "#6b7280", marginBottom: "3px" }}>
+                <div
+                  style={{
+                    fontSize: "11px",
+                    color: "#6b7280",
+                    marginBottom: "3px",
+                  }}
+                >
                   Duration
                 </div>
                 <select
@@ -866,7 +1120,14 @@ export default function App() {
       </div>
 
       {/* Block List */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "5px", marginBottom: "12px" }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "5px",
+          marginBottom: "12px",
+        }}
+      >
         {blocks.map((b, i) => {
           if (i === ci) return null;
           const isPast = now >= b.end;
@@ -932,7 +1193,15 @@ export default function App() {
                     </span>
                   )}
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0, marginLeft: "8px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    flexShrink: 0,
+                    marginLeft: "8px",
+                  }}
+                >
                   <div style={{ fontSize: "12px", color: "#4b5563" }}>
                     {fmtTime(b.start)}–{fmtTime(b.end)}
                   </div>
@@ -998,7 +1267,9 @@ export default function App() {
             marginBottom: "12px",
           }}
         >
-          <div style={{ fontSize: "13px", fontWeight: "600", color: "#f97316" }}>
+          <div
+            style={{ fontSize: "13px", fontWeight: "600", color: "#f97316" }}
+          >
             📝 Wrap-up
           </div>
           {wrapBlock && (
@@ -1012,7 +1283,13 @@ export default function App() {
           ["next", "What's next", "First thing tomorrow..."],
         ].map(([k, label, ph]) => (
           <div key={k} style={{ marginBottom: k === "left" ? "10px" : 0 }}>
-            <div style={{ fontSize: "11px", color: "#6b7280", marginBottom: "4px" }}>
+            <div
+              style={{
+                fontSize: "11px",
+                color: "#6b7280",
+                marginBottom: "4px",
+              }}
+            >
               {label}
             </div>
             <textarea
@@ -1086,9 +1363,10 @@ export default function App() {
           style={{
             marginTop: "8px",
             fontSize: "12px",
-            color: exportStatus.startsWith("⚠") || exportStatus.startsWith("error")
-              ? "#fca5a5"
-              : "#86efac",
+            color:
+              exportStatus.startsWith("⚠") || exportStatus.startsWith("error")
+                ? "#fca5a5"
+                : "#86efac",
             textAlign: "center",
           }}
         >
