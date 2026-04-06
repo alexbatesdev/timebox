@@ -76,90 +76,109 @@ const TC = {
 };
 
 /* ── notion export helpers ────────────────────────────────── */
-const buildMarkdown = (schedType, blocks, tasks, wrapup) => {
-  const schedLabel = schedType === "standup" ? "Standup Day" : "No Standup";
-  let md = `# Daily Timebox — ${fmtDate()}\n${schedLabel}\n\n`;
-  md += `| Time | Block | Task |\n|------|-------|------|\n`;
+const buildMarkdown = (blocks, tasks, wrapup) => {
+  let md = "";
   for (const b of blocks) {
+    const timeStr = `${fmtTimeShort(b.start)}-${fmtTimeShort(b.end)}`;
     const task = tasks[b.id] || "";
-    md += `| ${fmtTime(b.start)} – ${fmtTime(b.end)} | ${b.label} | ${task} |\n`;
-  }
-  if (wrapup.left || wrapup.next) {
-    md += `\n## Wrap-up\n`;
-    if (wrapup.left) md += `**Where I left off:** ${wrapup.left}\n\n`;
-    if (wrapup.next) md += `**What's next:** ${wrapup.next}\n`;
+    md += `- ${timeStr}: ${b.label}\n`;
+    if (b.type === "work" || b.type === "flex-work") {
+      md += `    > ${task || ""}\n\n`;
+    } else if (b.type === "meeting") {
+      md += `    > Notes:\n    > ${task || ""}\n\n`;
+    } else if (b.type === "wrapup") {
+      md += `    > Where I left off:\n    > ${wrapup.left || ""}\n\n`;
+      md += `    > What's next:\n    > ${wrapup.next || ""}\n\n`;
+    } else {
+      md += "\n";
+    }
   }
   return md;
 };
 
+/* Short time format for Notion (12-hour, no AM/PM): "9:00", "1:15", "4:45" */
+const fmtTimeShort = (mins) => {
+  const h = Math.floor(mins / 60) % 24;
+  const m = mins % 60;
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${h12}:${String(m).padStart(2, "0")}`;
+};
+
+const NOTION_CUSTOM_EMOJI_ID = import.meta.env.VITE_NOTION_CUSTOM_EMOJI_ID || "";
+
+const notionCallout = (icon, text) => ({
+  object: "block",
+  type: "callout",
+  callout: {
+    icon,
+    color: "gray_background",
+    rich_text: [{ type: "text", text: { content: text } }],
+  },
+});
+
+const emojiIcon = (emoji) => ({ type: "emoji", emoji });
+const customEmojiIcon = (id) => ({ type: "custom_emoji", custom_emoji: { id } });
+const workIcon = () =>
+  NOTION_CUSTOM_EMOJI_ID
+    ? customEmojiIcon(NOTION_CUSTOM_EMOJI_ID)
+    : emojiIcon("💻");
+
 const buildNotionPayload = (parentPageId, schedType, blocks, tasks, wrapup) => {
-  const schedLabel = schedType === "standup" ? "Standup Day" : "No Standup";
+  const modeLabel = schedType === "standup" ? "M" : "T";
   const children = [];
 
-  children.push({
-    object: "block",
-    type: "paragraph",
-    paragraph: {
-      rich_text: [{ type: "text", text: { content: schedLabel } }],
-    },
-  });
-  children.push({ object: "block", type: "divider", divider: {} });
-
   for (const b of blocks) {
-    const task = tasks[b.id] ? ` — ${tasks[b.id]}` : "";
-    children.push({
+    const timeStr = `${fmtTimeShort(b.start)}-${fmtTimeShort(b.end)}`;
+    const task = tasks[b.id] || "";
+    const callouts = [];
+
+    if (b.type === "work" || b.type === "flex-work") {
+      callouts.push(notionCallout(workIcon(), task || ""));
+    } else if (b.type === "meeting") {
+      callouts.push(notionCallout(emojiIcon("✏️"), task ? `Notes:\n${task}` : "Notes:"));
+    } else if (b.type === "wrapup") {
+      callouts.push(notionCallout(emojiIcon("💻"), `Where I left off:\n${wrapup.left || ""}`));
+      callouts.push(notionCallout(emojiIcon("💾"), `What's next:\n${wrapup.next || ""}`));
+    }
+    // break blocks get no callouts
+
+    const item = {
       object: "block",
-      type: "bulleted_list_item",
-      bulleted_list_item: {
-        rich_text: [
-          {
-            type: "text",
-            text: { content: `${fmtTime(b.start)} – ${fmtTime(b.end)}` },
-            annotations: { bold: true },
-          },
-          { type: "text", text: { content: `  ${b.label}${task}` } },
-        ],
+      type: "toggle",
+      toggle: {
+        rich_text: [{ type: "text", text: { content: `${timeStr}: ${b.label}` } }],
       },
-    });
+    };
+    if (callouts.length > 0) {
+      item.toggle.children = callouts;
+    }
+    children.push(item);
   }
 
-  if (wrapup.left || wrapup.next) {
-    children.push({ object: "block", type: "divider", divider: {} });
-    children.push({
-      object: "block",
-      type: "heading_2",
-      heading_2: { rich_text: [{ type: "text", text: { content: "Wrap-up" } }] },
-    });
-    if (wrapup.left) {
-      children.push({
-        object: "block",
-        type: "paragraph",
-        paragraph: {
-          rich_text: [
-            { type: "text", text: { content: "Where I left off: " }, annotations: { bold: true } },
-            { type: "text", text: { content: wrapup.left } },
-          ],
-        },
-      });
-    }
-    if (wrapup.next) {
-      children.push({
-        object: "block",
-        type: "paragraph",
-        paragraph: {
-          rich_text: [
-            { type: "text", text: { content: "What's next: " }, annotations: { bold: true } },
-            { type: "text", text: { content: wrapup.next } },
-          ],
-        },
-      });
-    }
+  const dbId = import.meta.env.VITE_NOTION_DATABASE_ID;
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const titleRichText = [
+    { type: "mention", mention: { type: "date", date: { start: todayISO } } },
+    { type: "text", text: { content: `'s Schedule (${modeLabel})` } },
+  ];
+
+  if (dbId) {
+    const titleProp = import.meta.env.VITE_NOTION_TITLE_PROP || "Name";
+    const dateProp = import.meta.env.VITE_NOTION_DATE_PROP || "date";
+    return {
+      parent: { database_id: dbId },
+      properties: {
+        [titleProp]: { title: titleRichText },
+        [dateProp]: { date: { start: todayISO } },
+      },
+      children,
+    };
   }
 
   return {
     parent: { page_id: parentPageId },
     properties: {
-      title: [{ text: { content: `Daily Timebox — ${fmtDate()}` } }],
+      title: titleRichText,
     },
     children,
   };
@@ -327,7 +346,7 @@ export default function App() {
 
   /* ── notion export ──────────────────────────────────── */
   const copyMarkdown = async () => {
-    const md = buildMarkdown(schedType, blocks, tasks, wrapup);
+    const md = buildMarkdown(blocks, tasks, wrapup);
     await navigator.clipboard.writeText(md);
     setExportStatus("copied");
     setTimeout(() => setExportStatus(null), 2000);
@@ -336,7 +355,8 @@ export default function App() {
   const sendToNotion = async () => {
     const token = import.meta.env.VITE_NOTION_TOKEN;
     const parentPage = import.meta.env.VITE_NOTION_PARENT_PAGE;
-    if (!token || !parentPage) {
+    const dbId = import.meta.env.VITE_NOTION_DATABASE_ID;
+    if (!token || (!parentPage && !dbId)) {
       setExportStatus("missing-env");
       setTimeout(() => setExportStatus(null), 4000);
       return;
