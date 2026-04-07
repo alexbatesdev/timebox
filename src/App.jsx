@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { getWeekdayKey } from "./utils/time.js";
 import { clearState } from "./utils/storage.js";
 import { loadScheduleConfig } from "./data/scheduleConfig.js";
@@ -293,6 +293,20 @@ export default function App() {
     }
     setTimeout(() => setExportStatus(null), 4000);
   };
+
+  /* ── auto-send to Notion at 5 PM ─────────────────── */
+  const autoSent = useRef(false);
+  useEffect(() => {
+    if (now >= 1020 && schedType && !autoSent.current) {
+      autoSent.current = true;
+      const token = import.meta.env.VITE_NOTION_TOKEN;
+      const parentPage = import.meta.env.VITE_NOTION_PARENT_PAGE;
+      const dbId = import.meta.env.VITE_NOTION_DATABASE_ID;
+      if (token && (parentPage || dbId)) {
+        setTimeout(sendToNotion, 0);
+      }
+    }
+  });
 
   /* ── render ────────────────────────────────────────── */
   if (configStatus === "loading" || !schedType) {
