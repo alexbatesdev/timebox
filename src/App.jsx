@@ -41,7 +41,7 @@ export default function App() {
   const [awayManualMins, setAwayManualMins] = useState(15);
 
   const now = useClock();
-  const { notifPerm, requestNotif, clearNotified } = useNotifications(blocks, tasks, now);
+  const { notifPerm, requestNotif, clearNotified, testNotif } = useNotifications(blocks, tasks, now);
   usePersist(schedType, blocks, tasks, wrapup, notionPageId);
   useScheduleInit({
     setSchedType,
@@ -340,6 +340,7 @@ export default function App() {
         now={now}
         notifPerm={notifPerm}
         onRequestNotif={requestNotif}
+        onTestNotif={testNotif}
         onReload={reloadScheduleFromConfig}
       />
 

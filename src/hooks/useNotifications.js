@@ -31,5 +31,16 @@ export const useNotifications = (blocks, tasks, now) => {
 
   const clearNotified = () => notified.current.clear();
 
-  return { notifPerm, requestNotif, clearNotified };
+  const testNotif = () => {
+    if (!("Notification" in window)) return;
+    if (Notification.permission !== "granted") {
+      requestNotif();
+      return;
+    }
+    new Notification("⏰ Test notification", {
+      body: "Notifications are working!",
+    });
+  };
+
+  return { notifPerm, requestNotif, clearNotified, testNotif };
 };

@@ -1,6 +1,6 @@
 import { fmtDate, fmtTime } from "../utils/time.js";
 
-export default function Header({ schedType, now, notifPerm, onRequestNotif, onReload }) {
+export default function Header({ schedType, now, notifPerm, onRequestNotif, onTestNotif, onReload }) {
   return (
     <div
       style={{
@@ -56,9 +56,18 @@ export default function Header({ schedType, now, notifPerm, onRequestNotif, onRe
           </button>
         )}
         {notifPerm && (
-          <div style={{ fontSize: "11px", color: "#22c55e" }}>
+          <button
+            onClick={onTestNotif}
+            style={{
+              fontSize: "11px",
+              color: "#22c55e",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
             🔔 Alerts on
-          </div>
+          </button>
         )}
       </div>
     </div>
