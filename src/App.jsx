@@ -279,12 +279,10 @@ const NOTION_CUSTOM_EMOJI_ID =
   import.meta.env.VITE_NOTION_CUSTOM_EMOJI_ID || "";
 
 const toRichText = (content) =>
-  (content || "")
-    .match(/[\s\S]{1,2000}/g)
-    ?.map((chunk) => ({
-      type: "text",
-      text: { content: chunk },
-    })) || [{ type: "text", text: { content: "" } }];
+  (content || "").match(/[\s\S]{1,2000}/g)?.map((chunk) => ({
+    type: "text",
+    text: { content: chunk },
+  })) || [{ type: "text", text: { content: "" } }];
 
 const notionCallout = (icon, text) => ({
   object: "block",
@@ -326,7 +324,8 @@ const parseSnapshotText = (text) => {
     return {
       schedType: parsed.schedType,
       blocks: Array.isArray(parsed.blocks) ? parsed.blocks : [],
-      tasks: parsed.tasks && typeof parsed.tasks === "object" ? parsed.tasks : {},
+      tasks:
+        parsed.tasks && typeof parsed.tasks === "object" ? parsed.tasks : {},
       wrapup:
         parsed.wrapup && typeof parsed.wrapup === "object"
           ? { left: parsed.wrapup.left || "", next: parsed.wrapup.next || "" }
@@ -412,7 +411,9 @@ const parseLegacyNotionBlocks = (notionBlocks) => {
     } else if (type === "meeting") {
       tasks[id] = childText.replace(/^Notes:\n?/, "");
     } else if (type === "wrapup") {
-      const leftMatch = childText.match(/Where I left off:\n([\s\S]*?)(?:\nWhat's next:|$)/);
+      const leftMatch = childText.match(
+        /Where I left off:\n([\s\S]*?)(?:\nWhat's next:|$)/,
+      );
       const nextMatch = childText.match(/What's next:\n([\s\S]*)$/);
       wrapup.left = leftMatch?.[1]?.trim() || "";
       wrapup.next = nextMatch?.[1]?.trim() || "";
@@ -452,7 +453,9 @@ const extractSnapshotFromBlocks = (notionBlocks) => {
       block.type === "toggle" &&
       notionRichTextToPlain(block.toggle?.rich_text) === TIMEBOX_STATE_LABEL,
   );
-  const codeBlock = stateToggle?.children?.find((child) => child.type === "code");
+  const codeBlock = stateToggle?.children?.find(
+    (child) => child.type === "code",
+  );
   const snapshot = codeBlock
     ? parseSnapshotText(notionRichTextToPlain(codeBlock.code?.rich_text))
     : null;
@@ -480,12 +483,18 @@ const fetchAllBlockChildren = async (blockId, token) => {
 
   do {
     const query = cursor ? `?start_cursor=${encodeURIComponent(cursor)}` : "";
-    const res = await notionFetch(`/blocks/${blockId}/children${query}`, token, {
-      method: "GET",
-    });
+    const res = await notionFetch(
+      `/blocks/${blockId}/children${query}`,
+      token,
+      {
+        method: "GET",
+      },
+    );
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || `Failed to fetch block children (${res.status})`);
+      throw new Error(
+        err.message || `Failed to fetch block children (${res.status})`,
+      );
     }
     const data = await res.json();
     results.push(...(data.results || []));
@@ -547,10 +556,14 @@ const loadTodayFromNotion = async (token) => {
 const replaceNotionPageContent = async (pageId, token, children) => {
   const existingChildren = await fetchAllBlockChildren(pageId, token);
   for (const child of existingChildren) {
-    const res = await notionFetch(`/blocks/${child.id}`, token, { method: "DELETE" });
+    const res = await notionFetch(`/blocks/${child.id}`, token, {
+      method: "DELETE",
+    });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || `Failed to clear page content (${res.status})`);
+      throw new Error(
+        err.message || `Failed to clear page content (${res.status})`,
+      );
     }
   }
 
@@ -560,13 +573,17 @@ const replaceNotionPageContent = async (pageId, token, children) => {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || `Failed to append page content (${res.status})`);
+    throw new Error(
+      err.message || `Failed to append page content (${res.status})`,
+    );
   }
 };
 
 const buildNotionPayload = (parentPageId, schedType, blocks, tasks, wrapup) => {
   const modeLabel = schedType === "standup" ? "M" : "T";
-  const children = [buildStateBlock(buildTimeboxSnapshot(schedType, blocks, tasks, wrapup))];
+  const children = [
+    buildStateBlock(buildTimeboxSnapshot(schedType, blocks, tasks, wrapup)),
+  ];
 
   for (const b of blocks) {
     const timeStr = `${fmtTimeShort(b.start)}-${fmtTimeShort(b.end)}`;
@@ -851,7 +868,8 @@ export default function App() {
     setBlocks((prev) => {
       const newBlocks = prev.map((b, i) => {
         if (i === ci) return { ...b, end: now };
-        if (i > ci) return { ...b, start: b.start + duration, end: b.end + duration };
+        if (i > ci)
+          return { ...b, start: b.start + duration, end: b.end + duration };
         return { ...b };
       });
 
@@ -1269,6 +1287,7 @@ export default function App() {
               alignItems: "center",
               marginTop: "12px",
               flexWrap: "wrap",
+              justifyContent: "space-between",
             }}
           >
             <span
@@ -1276,42 +1295,46 @@ export default function App() {
             >
               Resize:
             </span>
-            {[-15, -10, -5].map((d) => (
-              <button
-                key={d}
-                onClick={() => resizeCurrentBlock(d)}
-                style={{
-                  padding: "4px 9px",
-                  background: "#ffffff0a",
-                  border: "1px solid #22c55e40",
-                  color: "#86efac",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontSize: "12px",
-                  fontWeight: "600",
-                }}
-              >
-                {d}m
-              </button>
-            ))}
-            {[5, 10, 15].map((d) => (
-              <button
-                key={d}
-                onClick={() => resizeCurrentBlock(d)}
-                style={{
-                  padding: "4px 9px",
-                  background: "#ffffff0a",
-                  border: "1px solid #ef444440",
-                  color: "#fca5a5",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontSize: "12px",
-                  fontWeight: "600",
-                }}
-              >
-                +{d}m
-              </button>
-            ))}
+            <span>
+              {[-15, -10, -5].map((d) => (
+                <button
+                  key={d}
+                  onClick={() => resizeCurrentBlock(d)}
+                  style={{
+                    padding: "4px 9px",
+                    margin: "0 3px",
+                    background: "#ffffff0a",
+                    border: "1px solid #22c55e40",
+                    color: "#86efac",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                  }}
+                >
+                  {d}m
+                </button>
+              ))}
+              {[5, 10, 15].map((d) => (
+                <button
+                  key={d}
+                  onClick={() => resizeCurrentBlock(d)}
+                  style={{
+                    padding: "4px 9px",
+                    margin: "0 3px",
+                    background: "#ffffff0a",
+                    border: "1px solid #ef444440",
+                    color: "#fca5a5",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                  }}
+                >
+                  +{d}m
+                </button>
+              ))}
+            </span>
           </div>
           <div
             style={{
@@ -1320,6 +1343,7 @@ export default function App() {
               alignItems: "center",
               marginTop: "6px",
               flexWrap: "wrap",
+              justifyContent: "space-between",
             }}
           >
             <span
@@ -1327,42 +1351,46 @@ export default function App() {
             >
               Shift:
             </span>
-            {[-15, -10, -5].map((d) => (
-              <button
-                key={d}
-                onClick={() => shiftCurrentBlock(d)}
-                style={{
-                  padding: "4px 9px",
-                  background: "#ffffff0a",
-                  border: "1px solid #22c55e40",
-                  color: "#86efac",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontSize: "12px",
-                  fontWeight: "600",
-                }}
-              >
-                {d}m
-              </button>
-            ))}
-            {[5, 10, 15].map((d) => (
-              <button
-                key={d}
-                onClick={() => shiftCurrentBlock(d)}
-                style={{
-                  padding: "4px 9px",
-                  background: "#ffffff0a",
-                  border: "1px solid #ef444440",
-                  color: "#fca5a5",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontSize: "12px",
-                  fontWeight: "600",
-                }}
-              >
-                +{d}m
-              </button>
-            ))}
+            <span>
+              {[-15, -10, -5].map((d) => (
+                <button
+                  key={d}
+                  onClick={() => shiftCurrentBlock(d)}
+                  style={{
+                    padding: "4px 9px",
+                    margin: "0 3px",
+                    background: "#ffffff0a",
+                    border: "1px solid #22c55e40",
+                    color: "#86efac",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                  }}
+                >
+                  {d}m
+                </button>
+              ))}
+              {[5, 10, 15].map((d) => (
+                <button
+                  key={d}
+                  onClick={() => shiftCurrentBlock(d)}
+                  style={{
+                    padding: "4px 9px",
+                    margin: "0 3px",
+                    background: "#ffffff0a",
+                    border: "1px solid #ef444440",
+                    color: "#fca5a5",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                  }}
+                >
+                  +{d}m
+                </button>
+              ))}
+            </span>
           </div>
 
           <button
@@ -1398,7 +1426,8 @@ export default function App() {
             zIndex: 1000,
           }}
           onClick={(e) => {
-            if (e.target === e.currentTarget && !awayStart) setShowAwayModal(false);
+            if (e.target === e.currentTarget && !awayStart)
+              setShowAwayModal(false);
           }}
         >
           <div
@@ -1419,7 +1448,13 @@ export default function App() {
                 marginBottom: "16px",
               }}
             >
-              <div style={{ fontSize: "15px", fontWeight: "700", color: "#fde047" }}>
+              <div
+                style={{
+                  fontSize: "15px",
+                  fontWeight: "700",
+                  color: "#fde047",
+                }}
+              >
                 ⏸️ Step Away
               </div>
               {!awayStart && (
@@ -1456,7 +1491,8 @@ export default function App() {
                   style={{
                     flex: 1,
                     padding: "6px",
-                    background: awayAbsorbFlex === opt.value ? "#eab30820" : "#ffffff08",
+                    background:
+                      awayAbsorbFlex === opt.value ? "#eab30820" : "#ffffff08",
                     border: `1px solid ${awayAbsorbFlex === opt.value ? "#eab308" : "#333"}`,
                     color: awayAbsorbFlex === opt.value ? "#fde047" : "#6b7280",
                     borderRadius: "6px",
@@ -1505,7 +1541,9 @@ export default function App() {
                     min="1"
                     max="240"
                     value={awayManualMins}
-                    onChange={(e) => setAwayManualMins(Math.max(1, Number(e.target.value)))}
+                    onChange={(e) =>
+                      setAwayManualMins(Math.max(1, Number(e.target.value)))
+                    }
                     style={{
                       width: "60px",
                       background: "#ffffff0e",
@@ -1518,7 +1556,9 @@ export default function App() {
                       outline: "none",
                     }}
                   />
-                  <span style={{ fontSize: "12px", color: "#6b7280" }}>min</span>
+                  <span style={{ fontSize: "12px", color: "#6b7280" }}>
+                    min
+                  </span>
                   <button
                     onClick={manualPause}
                     style={{
