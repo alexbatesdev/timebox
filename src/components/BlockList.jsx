@@ -107,10 +107,11 @@ export default function BlockList({ blocks, currentIndex, now, tasks, onTaskChan
               </div>
             </div>
             {!isPast && showTask && (
-              <input
+              <textarea
                 value={tasks[b.id] || ""}
                 onChange={(e) => onTaskChange(b.id, e.target.value)}
                 placeholder="Task for this block..."
+                rows={2}
                 style={{
                   width: "100%",
                   background: "#ffffff07",
@@ -122,6 +123,8 @@ export default function BlockList({ blocks, currentIndex, now, tasks, onTaskChan
                   outline: "none",
                   boxSizing: "border-box",
                   marginTop: "8px",
+                  resize: "vertical",
+                  fontFamily: "inherit",
                 }}
               />
             )}

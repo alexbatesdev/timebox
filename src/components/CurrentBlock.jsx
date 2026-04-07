@@ -89,10 +89,11 @@ export default function CurrentBlock({ block, now, tasks, onTaskChange, onResize
       </div>
 
       {isWorkType(block.type) && (
-        <input
+        <textarea
           value={tasks[block.id] || ""}
           onChange={(e) => onTaskChange(block.id, e.target.value)}
           placeholder="What are you working on?"
+          rows={2}
           style={{
             width: "100%",
             background: "#ffffff0e",
@@ -103,6 +104,8 @@ export default function CurrentBlock({ block, now, tasks, onTaskChange, onResize
             fontSize: "14px",
             outline: "none",
             boxSizing: "border-box",
+            resize: "vertical",
+            fontFamily: "inherit",
           }}
         />
       )}
