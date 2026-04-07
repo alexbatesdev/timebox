@@ -238,6 +238,12 @@ const TC = {
     accent: "#fdba74",
     dot: "#f97316",
   },
+  away: {
+    bg: "#2a2200",
+    border: "#eab308",
+    accent: "#fde047",
+    dot: "#eab308",
+  },
 };
 
 /* ── notion export helpers ────────────────────────────────── */
@@ -351,6 +357,7 @@ const inferSchedTypeFromBlocks = (parsedBlocks) => {
 
 const inferBlockType = (label, childText) => {
   if (label === "Wrap up") return "wrapup";
+  if (label === "Away") return "away";
   if (label === "Lunch" || label === "Break") return "break";
   if (label.includes("Flex")) return "flex-work";
   if (childText.startsWith("Notes:")) return "meeting";
@@ -582,6 +589,8 @@ const buildNotionPayload = (parentPageId, schedType, blocks, tasks, wrapup) => {
       callouts.push(
         notionCallout(emojiIcon("💾"), `What's next:\n${wrapup.next || ""}`),
       );
+    } else if (b.type === "away") {
+      callouts.push(notionCallout(emojiIcon("⏸️"), "Away"));
     }
     // break blocks get no callouts
 
@@ -677,6 +686,10 @@ export default function App() {
   const [mtgMinute, setMtgMinute] = useState(0);
   const [mtgDuration, setMtgDuration] = useState(30);
   const [exportStatus, setExportStatus] = useState(null);
+  const [showAwayModal, setShowAwayModal] = useState(false);
+  const [awayStart, setAwayStart] = useState(null);
+  const [awayAbsorbFlex, setAwayAbsorbFlex] = useState(true);
+  const [awayManualMins, setAwayManualMins] = useState(15);
 
   /* persist to localStorage */
   useEffect(() => {
@@ -829,6 +842,61 @@ export default function App() {
         return b;
       });
     });
+  };
+
+  /* ── step away ────────────────────────────────────────── */
+  const insertAwayBlock = (duration, absorbFlex) => {
+    const ci = getCurIdx();
+    const awayId = `away_${Date.now()}`;
+    setBlocks((prev) => {
+      const newBlocks = prev.map((b, i) => {
+        if (i === ci) return { ...b, end: now };
+        if (i > ci) return { ...b, start: b.start + duration, end: b.end + duration };
+        return { ...b };
+      });
+
+      newBlocks.splice(ci + 1, 0, {
+        id: awayId,
+        label: "Away",
+        start: now,
+        end: now + duration,
+        type: "away",
+      });
+
+      if (absorbFlex) {
+        const flexIdx = newBlocks.findIndex((b) => b.type === "flex-work");
+        if (flexIdx >= 0) {
+          const flex = newBlocks[flexIdx];
+          const newEnd = Math.max(flex.start, flex.end - duration);
+          const leftover = duration - (flex.end - newEnd);
+          newBlocks[flexIdx] = { ...flex, end: newEnd };
+          if (leftover > 0) {
+            for (let i = flexIdx + 1; i < newBlocks.length; i++) {
+              newBlocks[i] = {
+                ...newBlocks[i],
+                start: newBlocks[i].start + leftover,
+                end: newBlocks[i].end + leftover,
+              };
+            }
+          }
+        }
+      }
+
+      return newBlocks.filter((b) => b.end > b.start);
+    });
+    setShowAwayModal(false);
+    setAwayStart(null);
+  };
+
+  const startPause = () => setAwayStart(now);
+
+  const endPause = () => {
+    const duration = Math.max(1, now - awayStart);
+    insertAwayBlock(duration, awayAbsorbFlex);
+  };
+
+  const manualPause = () => {
+    insertAwayBlock(awayManualMins, awayAbsorbFlex);
   };
 
   /* ── add meeting ─────────────────────────────────────── */
@@ -1295,6 +1363,219 @@ export default function App() {
                 +{d}m
               </button>
             ))}
+          </div>
+
+          <button
+            onClick={() => setShowAwayModal(true)}
+            style={{
+              marginTop: "10px",
+              width: "100%",
+              padding: "8px",
+              background: "#2a220010",
+              border: "1px solid #eab30840",
+              color: "#fde047",
+              borderRadius: "6px",
+              cursor: "pointer",
+              fontSize: "12px",
+              fontWeight: "600",
+            }}
+          >
+            ⏸️ Step Away
+          </button>
+        </div>
+      )}
+
+      {/* Away Modal */}
+      {showAwayModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "#000000aa",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !awayStart) setShowAwayModal(false);
+          }}
+        >
+          <div
+            style={{
+              background: "#1a1a1a",
+              border: "1px solid #eab30840",
+              borderRadius: "12px",
+              padding: "20px",
+              width: "340px",
+              maxWidth: "90vw",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "16px",
+              }}
+            >
+              <div style={{ fontSize: "15px", fontWeight: "700", color: "#fde047" }}>
+                ⏸️ Step Away
+              </div>
+              {!awayStart && (
+                <button
+                  onClick={() => setShowAwayModal(false)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#6b7280",
+                    cursor: "pointer",
+                    fontSize: "16px",
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Absorb toggle */}
+            <div
+              style={{
+                display: "flex",
+                gap: "6px",
+                marginBottom: "16px",
+              }}
+            >
+              {[
+                { label: "Use flex time", value: true },
+                { label: "Extend day", value: false },
+              ].map((opt) => (
+                <button
+                  key={String(opt.value)}
+                  onClick={() => setAwayAbsorbFlex(opt.value)}
+                  style={{
+                    flex: 1,
+                    padding: "6px",
+                    background: awayAbsorbFlex === opt.value ? "#eab30820" : "#ffffff08",
+                    border: `1px solid ${awayAbsorbFlex === opt.value ? "#eab308" : "#333"}`,
+                    color: awayAbsorbFlex === opt.value ? "#fde047" : "#6b7280",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {awayStart === null ? (
+              <>
+                {/* Live timer */}
+                <button
+                  onClick={startPause}
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    background: "#eab30820",
+                    border: "1px solid #eab308",
+                    color: "#fde047",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontSize: "14px",
+                    fontWeight: "700",
+                    marginBottom: "12px",
+                  }}
+                >
+                  Start Timer
+                </button>
+
+                {/* Manual input */}
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "8px",
+                    alignItems: "center",
+                  }}
+                >
+                  <span style={{ fontSize: "12px", color: "#6b7280" }}>or</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="240"
+                    value={awayManualMins}
+                    onChange={(e) => setAwayManualMins(Math.max(1, Number(e.target.value)))}
+                    style={{
+                      width: "60px",
+                      background: "#ffffff0e",
+                      border: "1px solid #333",
+                      borderRadius: "6px",
+                      padding: "6px 8px",
+                      color: "#f9fafb",
+                      fontSize: "13px",
+                      textAlign: "center",
+                      outline: "none",
+                    }}
+                  />
+                  <span style={{ fontSize: "12px", color: "#6b7280" }}>min</span>
+                  <button
+                    onClick={manualPause}
+                    style={{
+                      flex: 1,
+                      padding: "7px",
+                      background: "#ffffff0a",
+                      border: "1px solid #eab30840",
+                      color: "#fde047",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                    }}
+                  >
+                    Add break
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div style={{ textAlign: "center" }}>
+                <div
+                  style={{
+                    fontSize: "36px",
+                    fontWeight: "800",
+                    color: "#fde047",
+                    marginBottom: "4px",
+                  }}
+                >
+                  {Math.max(0, now - awayStart)} min
+                </div>
+                <div
+                  style={{
+                    fontSize: "12px",
+                    color: "#6b7280",
+                    marginBottom: "16px",
+                  }}
+                >
+                  away since {fmtTime(awayStart)}
+                </div>
+                <button
+                  onClick={endPause}
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    background: "#22c55e20",
+                    border: "1px solid #22c55e",
+                    color: "#86efac",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontSize: "14px",
+                    fontWeight: "700",
+                  }}
+                >
+                  I'm Back
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
