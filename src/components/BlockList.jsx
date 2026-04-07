@@ -85,8 +85,11 @@ export default function BlockList({ blocks, currentIndex, now, tasks, onTaskChan
                   marginLeft: "8px",
                 }}
               >
-                <div style={{ fontSize: "12px", color: "#4b5563" }}>
+                <div style={{ fontSize: "12px", color: "#9ca3af" }}>
                   {fmtTime(b.start)}–{fmtTime(b.end)}
+                </div>
+                <div style={{ fontSize: "12px", color: "#4b5563" }}>
+                  {b.end - b.start}m
                 </div>
                 {isAddedMeeting && !isPast && (
                   <button
