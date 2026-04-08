@@ -11,6 +11,7 @@ import { usePersist } from "./hooks/usePersist.js";
 import { useNotifications } from "./hooks/useNotifications.js";
 import { useScheduleInit } from "./hooks/useScheduleInit.js";
 
+import { useLooseEnds } from "./hooks/useLooseEnds.js";
 import LoadingScreen from "./components/LoadingScreen.jsx";
 import Header from "./components/Header.jsx";
 import CurrentBlock from "./components/CurrentBlock.jsx";
@@ -19,6 +20,7 @@ import MeetingForm from "./components/MeetingForm.jsx";
 import BlockList from "./components/BlockList.jsx";
 import WrapupSection from "./components/WrapupSection.jsx";
 import ExportBar from "./components/ExportBar.jsx";
+import LooseEndsPanel from "./components/LooseEndsPanel.jsx";
 
 /* ── app ──────────────────────────────────────────────────── */
 export default function App() {
@@ -41,9 +43,11 @@ export default function App() {
   const [awayStart, setAwayStart] = useState(null);
   const [awayAbsorbFlex, setAwayAbsorbFlex] = useState(true);
   const [awayManualMins, setAwayManualMins] = useState(15);
+  const [looseEndsManualState, setLooseEndsManualState] = useState(null);
 
   const now = useClock();
-  const { notifPerm, requestNotif, clearNotified, testNotif } = useNotifications(blocks, tasks, now);
+  const { notifPerm, requestNotif, clearNotified, testNotif } =
+    useNotifications(blocks, tasks, now);
   usePersist(schedType, blocks, tasks, wrapup, notionPageId);
   useScheduleInit({
     setSchedType,
@@ -56,6 +60,7 @@ export default function App() {
     clearNotified,
   });
 
+  const looseEnds = useLooseEnds();
   const schedules = config?.schedules || {};
 
   const initSchedule = (type) => {
@@ -119,7 +124,10 @@ export default function App() {
         }
         if (shift !== 0) {
           if (newBlocks[i].type === "flex-work") {
-            newBlocks[i] = { ...newBlocks[i], start: newBlocks[i].start + shift };
+            newBlocks[i] = {
+              ...newBlocks[i],
+              start: newBlocks[i].start + shift,
+            };
           } else {
             newBlocks[i] = {
               ...newBlocks[i],
@@ -236,7 +244,11 @@ export default function App() {
       for (let i = 0; i < newBlocks.length - 1; i++) {
         const curr = newBlocks[i];
         const next = newBlocks[i + 1];
-        if (curr.end > next.start && !pinned.has(curr.id) && pinned.has(next.id)) {
+        if (
+          curr.end > next.start &&
+          !pinned.has(curr.id) &&
+          pinned.has(next.id)
+        ) {
           newBlocks[i] = { ...curr, end: next.start };
         }
       }
@@ -363,6 +375,16 @@ export default function App() {
     }
   });
 
+  /* ── auto-open loose ends panel ────────────────────── */
+  const curBlockKey = blocks[getCurIdx()]?.id;
+  useEffect(() => {
+    setLooseEndsManualState(null);
+  }, [curBlockKey]);
+
+  const handleLooseEndsToggle = (open) => {
+    setLooseEndsManualState(open);
+  };
+
   /* ── render ────────────────────────────────────────── */
   if (configStatus === "loading" || !schedType) {
     return <LoadingScreen onInitSchedule={initSchedule} />;
@@ -370,10 +392,20 @@ export default function App() {
 
   const ci = getCurIdx();
   const cur = blocks[ci];
+  const isAutoOpenBlock =
+    looseEnds.configured &&
+    cur &&
+    (cur.id === "plan" || cur.type === "flex-work");
+  const looseEndsOpen =
+    looseEndsManualState !== null ? looseEndsManualState : isAutoOpenBlock;
   const wrapBlock = blocks.find((b) => b.type === "wrapup");
   const hasFlexTime = blocks.some((b) => b.type === "flex-work");
-  const schedStartHour = blocks.length ? Math.floor(Math.min(...blocks.map((b) => b.start)) / 60) : 8;
-  const schedEndHour = blocks.length ? Math.ceil(Math.max(...blocks.map((b) => b.end)) / 60) : 18;
+  const schedStartHour = blocks.length
+    ? Math.floor(Math.min(...blocks.map((b) => b.start)) / 60)
+    : 8;
+  const schedEndHour = blocks.length
+    ? Math.ceil(Math.max(...blocks.map((b) => b.end)) / 60)
+    : 18;
 
   const exportStatusMsg = {
     copied: "✅ Copied to clipboard!",
@@ -395,93 +427,108 @@ export default function App() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#0a0a0a",
-        fontFamily: "system-ui,sans-serif",
-        color: "#e5e7eb",
-        padding: "16px",
-        maxWidth: "600px",
-        margin: "0 auto",
-      }}
-    >
-      <Header
-        scheduleLabel={schedules[schedType]?.label || schedType}
-        scheduleEmoji={schedules[schedType]?.emoji || ""}
-        now={now}
-        notifPerm={notifPerm}
-        onRequestNotif={requestNotif}
-        onTestNotif={testNotif}
-        onReload={reloadScheduleFromConfig}
-      />
+    <>
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "#0a0a0a",
+          fontFamily: "system-ui,sans-serif",
+          color: "#e5e7eb",
+          padding: "16px",
+          maxWidth: "600px",
+          margin: "0 auto",
+          position: "relative",
+          zIndex: 1,
+        }}
+      >
+        <Header
+          scheduleLabel={schedules[schedType]?.label || schedType}
+          scheduleEmoji={schedules[schedType]?.emoji || ""}
+          now={now}
+          notifPerm={notifPerm}
+          onRequestNotif={requestNotif}
+          onTestNotif={testNotif}
+          onReload={reloadScheduleFromConfig}
+        />
 
-      {cur && (
-        <CurrentBlock
-          block={cur}
+        {cur && (
+          <CurrentBlock
+            block={cur}
+            now={now}
+            tasks={tasks}
+            onTaskChange={handleTaskChange}
+            onResize={resizeCurrentBlock}
+            onShift={shiftCurrentBlock}
+            onStepAway={() => setShowAwayModal(true)}
+          />
+        )}
+
+        <AwayModal
+          show={showAwayModal}
+          awayStart={awayStart}
+          now={now}
+          awayAbsorbFlex={awayAbsorbFlex}
+          awayManualMins={awayManualMins}
+          onAbsorbChange={setAwayAbsorbFlex}
+          onManualMinsChange={setAwayManualMins}
+          onStartPause={startPause}
+          onEndPause={endPause}
+          onManualPause={manualPause}
+          onClose={() => setShowAwayModal(false)}
+        />
+
+        <MeetingForm
+          show={showMeetingForm}
+          hasFlexTime={hasFlexTime}
+          startHour={schedStartHour}
+          endHour={schedEndHour}
+          mtgLabel={mtgLabel}
+          mtgHour={mtgHour}
+          mtgMinute={mtgMinute}
+          mtgDuration={mtgDuration}
+          mtgIncludesLunch={mtgIncludesLunch}
+          onLabelChange={setMtgLabel}
+          onHourChange={setMtgHour}
+          onMinuteChange={setMtgMinute}
+          onDurationChange={setMtgDuration}
+          onIncludesLunchChange={setMtgIncludesLunch}
+          onAdd={addMeeting}
+          onToggle={setShowMeetingForm}
+        />
+
+        <BlockList
+          blocks={blocks}
+          currentIndex={ci}
           now={now}
           tasks={tasks}
           onTaskChange={handleTaskChange}
-          onResize={resizeCurrentBlock}
-          onShift={shiftCurrentBlock}
-          onStepAway={() => setShowAwayModal(true)}
+          onRemoveMeeting={removeMeeting}
+        />
+
+        <WrapupSection
+          wrapup={wrapup}
+          wrapBlock={wrapBlock}
+          onWrapupChange={handleWrapupChange}
+        />
+
+        <ExportBar
+          exportStatus={exportStatus}
+          exportStatusMsg={exportStatusMsg}
+          onCopyMarkdown={copyMarkdown}
+          onSendToNotion={sendToNotion}
+        />
+      </div>
+      {looseEnds.configured && (
+        <LooseEndsPanel
+          open={looseEndsOpen}
+          onToggle={handleLooseEndsToggle}
+          items={looseEnds.items}
+          loading={looseEnds.loading}
+          onAdd={looseEnds.addItem}
+          onComplete={looseEnds.completeItem}
+          onDelete={looseEnds.deleteItem}
         />
       )}
-
-      <AwayModal
-        show={showAwayModal}
-        awayStart={awayStart}
-        now={now}
-        awayAbsorbFlex={awayAbsorbFlex}
-        awayManualMins={awayManualMins}
-        onAbsorbChange={setAwayAbsorbFlex}
-        onManualMinsChange={setAwayManualMins}
-        onStartPause={startPause}
-        onEndPause={endPause}
-        onManualPause={manualPause}
-        onClose={() => setShowAwayModal(false)}
-      />
-
-      <MeetingForm
-        show={showMeetingForm}
-        hasFlexTime={hasFlexTime}
-        startHour={schedStartHour}
-        endHour={schedEndHour}
-        mtgLabel={mtgLabel}
-        mtgHour={mtgHour}
-        mtgMinute={mtgMinute}
-        mtgDuration={mtgDuration}
-        mtgIncludesLunch={mtgIncludesLunch}
-        onLabelChange={setMtgLabel}
-        onHourChange={setMtgHour}
-        onMinuteChange={setMtgMinute}
-        onDurationChange={setMtgDuration}
-        onIncludesLunchChange={setMtgIncludesLunch}
-        onAdd={addMeeting}
-        onToggle={setShowMeetingForm}
-      />
-
-      <BlockList
-        blocks={blocks}
-        currentIndex={ci}
-        now={now}
-        tasks={tasks}
-        onTaskChange={handleTaskChange}
-        onRemoveMeeting={removeMeeting}
-      />
-
-      <WrapupSection
-        wrapup={wrapup}
-        wrapBlock={wrapBlock}
-        onWrapupChange={handleWrapupChange}
-      />
-
-      <ExportBar
-        exportStatus={exportStatus}
-        exportStatusMsg={exportStatusMsg}
-        onCopyMarkdown={copyMarkdown}
-        onSendToNotion={sendToNotion}
-      />
-    </div>
+    </>
   );
 }

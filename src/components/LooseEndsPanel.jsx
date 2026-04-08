@@ -1,0 +1,224 @@
+import { useState } from "react";
+
+export default function LooseEndsPanel({
+  open,
+  onToggle,
+  items,
+  loading,
+  onAdd,
+  onComplete,
+  onDelete,
+}) {
+  const [input, setInput] = useState("");
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+    onAdd(input.trim());
+    setInput("");
+  };
+
+  return (
+    <>
+      {/* Tab */}
+
+      {/* Panel */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: "50%",
+          width: "300px",
+          height: "100%",
+          background: "#111",
+          border: "1px solid #252525",
+          borderRadius: "12px 0 0 12px",
+          transform: open ? "translateX(0%)" : "translateX(325px)",
+          transition: "transform 0.25s ease",
+          zIndex: 0,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "visible",
+        }}
+      >
+        <button
+          onClick={() => onToggle(!open)}
+          style={{
+            position: "absolute",
+            left: "300px",
+            top: "80px",
+            width: "32px",
+            height: "48px",
+            background: "#1a1a1a",
+            border: "1px solid #333",
+            borderLeft: "none",
+            borderRadius: "0 8px 8px 0",
+            color: "#9ca3af",
+            fontSize: "14px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 10,
+          }}
+          title="Loose Ends"
+        >
+          {items.length > 0 ? (
+            <span style={{ fontSize: "11px", fontWeight: "700" }}>
+              {items.length}
+            </span>
+          ) : (
+            "📋"
+          )}
+        </button>
+        {/* Header */}
+        <div
+          style={{
+            padding: "14px 16px",
+            borderBottom: "1px solid #252525",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <div
+            style={{ fontSize: "14px", fontWeight: "700", color: "#e5e7eb" }}
+          >
+            📋 Loose Ends
+          </div>
+          <button
+            onClick={() => onToggle(false)}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#6b7280",
+              cursor: "pointer",
+              fontSize: "16px",
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Add input */}
+        <form
+          onSubmit={handleSubmit}
+          style={{
+            padding: "10px 16px",
+            borderBottom: "1px solid #1f1f1f",
+          }}
+        >
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Add a loose end..."
+            style={{
+              width: "100%",
+              background: "#ffffff0a",
+              border: "1px solid #333",
+              borderRadius: "6px",
+              padding: "7px 10px",
+              color: "#f9fafb",
+              fontSize: "13px",
+              outline: "none",
+              boxSizing: "border-box",
+            }}
+          />
+        </form>
+
+        {/* Items */}
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: "8px 0",
+          }}
+        >
+          {loading && items.length === 0 && (
+            <div
+              style={{
+                padding: "16px",
+                color: "#6b7280",
+                fontSize: "13px",
+                textAlign: "center",
+              }}
+            >
+              Loading…
+            </div>
+          )}
+          {!loading && items.length === 0 && (
+            <div
+              style={{
+                padding: "16px",
+                color: "#4b5563",
+                fontSize: "13px",
+                textAlign: "center",
+              }}
+            >
+              No loose ends
+            </div>
+          )}
+          {items.map((item) => (
+            <div
+              key={item.id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "6px 16px",
+              }}
+            >
+              <button
+                onClick={() => onComplete(item.id)}
+                title="Mark done"
+                style={{
+                  background: "none",
+                  border: "1px solid #333",
+                  borderRadius: "4px",
+                  width: "20px",
+                  height: "20px",
+                  cursor: "pointer",
+                  color: "#22c55e",
+                  fontSize: "12px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  padding: 0,
+                }}
+              >
+                ✓
+              </button>
+              <span
+                style={{
+                  flex: 1,
+                  fontSize: "13px",
+                  color: "#d1d5db",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {item.title}
+              </span>
+              <button
+                onClick={() => onDelete(item.id)}
+                title="Delete"
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#4b5563",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  padding: "0 2px",
+                  flexShrink: 0,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
