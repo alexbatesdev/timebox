@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { fmtTime } from "../utils/time.js";
 import { TC, isWorkType } from "../data/theme.js";
+import { loadYesterdayWrapup } from "../utils/storage.js";
 import AutoTextarea from "./AutoTextarea.jsx";
 
 export default function CurrentBlock({ block, now, tasks, onTaskChange, onResize, onShift, onStepAway }) {
+  const [yesterdayWrapup] = useState(() => loadYesterdayWrapup());
   const tc = TC[block?.type] || TC.work;
   const minsLeft = Math.max(0, block.end - now);
   const progress = Math.min(
@@ -88,6 +91,35 @@ export default function CurrentBlock({ block, now, tasks, onTaskChange, onResize
           }}
         />
       </div>
+
+      {block.id === "plan" && yesterdayWrapup && (yesterdayWrapup.left || yesterdayWrapup.next) && (
+        <div
+          style={{
+            background: "#ffffff08",
+            border: "1px solid #ffffff12",
+            borderRadius: "8px",
+            padding: "10px 12px",
+            marginBottom: "12px",
+            fontSize: "12px",
+          }}
+        >
+          <div style={{ color: "#6b7280", fontWeight: "600", marginBottom: "6px" }}>
+            Yesterday's wrap-up
+          </div>
+          {yesterdayWrapup.left && (
+            <div style={{ marginBottom: "6px" }}>
+              <div style={{ color: "#6b7280", fontSize: "11px" }}>Where I left off</div>
+              <div style={{ color: "#9ca3af", whiteSpace: "pre-wrap" }}>{yesterdayWrapup.left}</div>
+            </div>
+          )}
+          {yesterdayWrapup.next && (
+            <div>
+              <div style={{ color: "#6b7280", fontSize: "11px" }}>What's next</div>
+              <div style={{ color: "#9ca3af", whiteSpace: "pre-wrap" }}>{yesterdayWrapup.next}</div>
+            </div>
+          )}
+        </div>
+      )}
 
       {(isWorkType(block.type) || block.type === "meeting") && (
         <AutoTextarea

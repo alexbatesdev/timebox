@@ -16,3 +16,17 @@ export const saveState = (state) => {
   }
 };
 export const clearState = () => localStorage.removeItem(todayKey());
+
+export const loadYesterdayWrapup = () => {
+  try {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const key = `timebox-${yesterday.toISOString().slice(0, 10)}`;
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.wrapup || null;
+  } catch {
+    return null;
+  }
+};
