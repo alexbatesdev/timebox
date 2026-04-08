@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  isLooseEndsConfigured,
   fetchLooseEnds,
   addLooseEnd,
   completeLooseEnd,
   deleteLooseEnd,
-} from "../notion/looseEnds.js";
+} from "../api.js";
 
 const STORAGE_KEY = "timebox-loose-ends";
 
@@ -27,7 +26,6 @@ const saveToStorage = (items) => {
 };
 
 export const useLooseEnds = () => {
-  const notionEnabled = isLooseEndsConfigured();
   const [items, setItems] = useState(() => loadFromStorage());
   const [loading, setLoading] = useState(false);
 
@@ -37,7 +35,6 @@ export const useLooseEnds = () => {
   }, []);
 
   const reload = useCallback(async () => {
-    if (!notionEnabled) return;
     setLoading(true);
     try {
       const data = await fetchLooseEnds();
@@ -47,11 +44,11 @@ export const useLooseEnds = () => {
       /* keep localStorage version */
     }
     setLoading(false);
-  }, [notionEnabled]);
+  }, []);
 
   useEffect(() => {
-    if (notionEnabled) reload();
-  }, [notionEnabled, reload]);
+    reload();
+  }, [reload]);
 
   const addItem = useCallback(
     async (title) => {
@@ -59,46 +56,40 @@ export const useLooseEnds = () => {
       const tempId = `local_${Date.now()}`;
       const newItem = { id: tempId, title: title.trim() };
       persist((prev) => [...prev, newItem]);
-      if (notionEnabled) {
-        try {
-          const created = await addLooseEnd(title.trim());
-          persist((prev) =>
-            prev.map((item) => (item.id === tempId ? created : item)),
-          );
-        } catch {
-          /* keep local version */
-        }
+      try {
+        const created = await addLooseEnd(title.trim());
+        persist((prev) =>
+          prev.map((item) => (item.id === tempId ? created : item)),
+        );
+      } catch {
+        /* keep local version */
       }
     },
-    [notionEnabled, persist],
+    [persist],
   );
 
   const completeItem = useCallback(
     async (id) => {
       persist((prev) => prev.filter((item) => item.id !== id));
-      if (notionEnabled) {
-        try {
-          await completeLooseEnd(id);
-        } catch {
-          reload();
-        }
+      try {
+        await completeLooseEnd(id);
+      } catch {
+        reload();
       }
     },
-    [notionEnabled, persist, reload],
+    [persist, reload],
   );
 
   const deleteItem = useCallback(
     async (id) => {
       persist((prev) => prev.filter((item) => item.id !== id));
-      if (notionEnabled) {
-        try {
-          await deleteLooseEnd(id);
-        } catch {
-          reload();
-        }
+      try {
+        await deleteLooseEnd(id);
+      } catch {
+        reload();
       }
     },
-    [notionEnabled, persist, reload],
+    [persist, reload],
   );
 
   return { items, loading, addItem, completeItem, deleteItem, reload };

@@ -4,8 +4,7 @@ import { clearState } from "./utils/storage.js";
 import { loadScheduleConfig } from "./data/scheduleConfig.js";
 import { createScheduleState } from "./data/schedules.js";
 import { buildMarkdown } from "./export/markdown.js";
-import { notionFetch, replaceNotionPageContent } from "./notion/api.js";
-import { buildNotionPayload } from "./notion/payload.js";
+import { saveSchedule } from "./api.js";
 import { useClock } from "./hooks/useClock.js";
 import { usePersist } from "./hooks/usePersist.js";
 import { useNotifications } from "./hooks/useNotifications.js";
@@ -307,71 +306,28 @@ export default function App() {
   };
 
   const sendToNotion = async () => {
-    const token = import.meta.env.VITE_NOTION_TOKEN;
-    const parentPage = import.meta.env.VITE_NOTION_PARENT_PAGE;
-    const dbId = import.meta.env.VITE_NOTION_DATABASE_ID;
-    if (!token || (!parentPage && !dbId)) {
-      setExportStatus("missing-env");
-      setTimeout(() => setExportStatus(null), 4000);
-      return;
-    }
     setExportStatus("sending");
     try {
-      const payload = buildNotionPayload(
-        parentPage,
+      const result = await saveSchedule(notionPageId, {
         schedType,
         blocks,
         tasks,
         wrapup,
-      );
-
-      if (notionPageId) {
-        const updateRes = await notionFetch(`/pages/${notionPageId}`, token, {
-          method: "PATCH",
-          body: JSON.stringify({ properties: payload.properties }),
-        });
-        if (!updateRes.ok) {
-          const err = await updateRes.json().catch(() => ({}));
-          if (updateRes.status === 401) setExportStatus("bad-token");
-          else if (updateRes.status === 404) setExportStatus("bad-parent");
-          else setExportStatus(`error: ${err.message || updateRes.status}`);
-        } else {
-          await replaceNotionPageContent(notionPageId, token, payload.children);
-          setExportStatus("sent");
-        }
-      } else {
-        const createRes = await notionFetch("/pages", token, {
-          method: "POST",
-          body: JSON.stringify(payload),
-        });
-        if (!createRes.ok) {
-          const err = await createRes.json().catch(() => ({}));
-          if (createRes.status === 401) setExportStatus("bad-token");
-          else if (createRes.status === 404) setExportStatus("bad-parent");
-          else setExportStatus(`error: ${err.message || createRes.status}`);
-        } else {
-          const created = await createRes.json();
-          setNotionPageId(created.id);
-          setExportStatus("sent");
-        }
-      }
-    } catch {
-      setExportStatus("network-error");
+      });
+      setNotionPageId(result.pageId);
+      setExportStatus("sent");
+    } catch (e) {
+      setExportStatus(`error: ${e.message}`);
     }
     setTimeout(() => setExportStatus(null), 4000);
   };
 
-  /* ── auto-send to Notion at 5 PM ─────────────────── */
+  /* ── auto-send at 5 PM ─────────────────────────────── */
   const autoSent = useRef(false);
   useEffect(() => {
     if (now >= 1020 && schedType && !autoSent.current) {
       autoSent.current = true;
-      const token = import.meta.env.VITE_NOTION_TOKEN;
-      const parentPage = import.meta.env.VITE_NOTION_PARENT_PAGE;
-      const dbId = import.meta.env.VITE_NOTION_DATABASE_ID;
-      if (token && (parentPage || dbId)) {
-        setTimeout(sendToNotion, 0);
-      }
+      setTimeout(sendToNotion, 0);
     }
   });
 

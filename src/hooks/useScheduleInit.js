@@ -3,7 +3,7 @@ import { getWeekdayKey } from "../utils/time.js";
 import { loadState } from "../utils/storage.js";
 import { loadScheduleConfig } from "../data/scheduleConfig.js";
 import { resolveInitialState } from "../data/schedules.js";
-import { loadTodayFromNotion } from "../notion/api.js";
+import { loadToday } from "../api.js";
 
 export const useScheduleInit = ({
   setSchedType,
@@ -27,28 +27,26 @@ export const useScheduleInit = ({
         setWrapup(saved.wrapup ?? { left: "", next: "" });
         setNotionPageId(saved.notionPageId ?? null);
         clearNotified();
-        // Still load config for labels/emoji/schedule templates
         const config = await loadScheduleConfig();
         if (!cancelled) setConfig(config);
         setConfigStatus("ready");
         return;
       }
 
-      const token = import.meta.env.VITE_NOTION_TOKEN;
-      let notionState = null;
+      let todayData = null;
       try {
-        notionState = await loadTodayFromNotion(token);
+        todayData = await loadToday();
       } catch {
-        notionState = null;
+        todayData = null;
       }
       if (cancelled) return;
 
-      if (notionState?.snapshot) {
-        setSchedType(notionState.snapshot.schedType);
-        setBlocks(notionState.snapshot.blocks);
-        setTasks(notionState.snapshot.tasks);
-        setWrapup(notionState.snapshot.wrapup);
-        setNotionPageId(notionState.pageId);
+      if (todayData?.snapshot) {
+        setSchedType(todayData.snapshot.schedType);
+        setBlocks(todayData.snapshot.blocks);
+        setTasks(todayData.snapshot.tasks);
+        setWrapup(todayData.snapshot.wrapup);
+        setNotionPageId(todayData.pageId);
         clearNotified();
         const config = await loadScheduleConfig();
         if (!cancelled) setConfig(config);

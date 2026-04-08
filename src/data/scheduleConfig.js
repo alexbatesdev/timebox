@@ -74,9 +74,8 @@ const parseSchedules = (raw) => {
 
 export const loadScheduleConfig = async () => {
   try {
-    const res = await fetch("/schedule-config.json", { cache: "no-store" });
-    if (!res.ok) return SCHEDULE_CONFIG;
-    const data = await res.json();
+    const { loadConfig } = await import("../api.js");
+    const data = await loadConfig();
     const schedules = parseSchedules(data.schedules);
     const scheduleTypes = Object.keys(schedules);
     return {
