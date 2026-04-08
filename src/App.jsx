@@ -392,10 +392,7 @@ export default function App() {
 
   const ci = getCurIdx();
   const cur = blocks[ci];
-  const isAutoOpenBlock =
-    looseEnds.configured &&
-    cur &&
-    (cur.id === "plan" || cur.type === "flex-work");
+  const isAutoOpenBlock = cur && (cur.id === "plan" || cur.type === "flex-work");
   const looseEndsOpen =
     looseEndsManualState !== null ? looseEndsManualState : isAutoOpenBlock;
   const wrapBlock = blocks.find((b) => b.type === "wrapup");
@@ -523,17 +520,15 @@ export default function App() {
           onSendToNotion={sendToNotion}
         />
       </div>
-      {looseEnds.configured && (
-        <LooseEndsPanel
-          open={looseEndsOpen}
-          onToggle={handleLooseEndsToggle}
-          items={looseEnds.items}
-          loading={looseEnds.loading}
-          onAdd={looseEnds.addItem}
-          onComplete={looseEnds.completeItem}
-          onDelete={looseEnds.deleteItem}
-        />
-      )}
+      <LooseEndsPanel
+        open={looseEndsOpen}
+        onToggle={handleLooseEndsToggle}
+        items={looseEnds.items}
+        loading={looseEnds.loading}
+        onAdd={looseEnds.addItem}
+        onComplete={looseEnds.completeItem}
+        onDelete={looseEnds.deleteItem}
+      />
     </div>
   );
 }

@@ -7,69 +7,99 @@ import {
   deleteLooseEnd,
 } from "../notion/looseEnds.js";
 
+const STORAGE_KEY = "timebox-loose-ends";
+
+const loadFromStorage = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveToStorage = (items) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  } catch {
+    /* quota exceeded */
+  }
+};
+
 export const useLooseEnds = () => {
-  const configured = isLooseEndsConfigured();
-  const [items, setItems] = useState([]);
+  const notionEnabled = isLooseEndsConfigured();
+  const [items, setItems] = useState(() => loadFromStorage());
   const [loading, setLoading] = useState(false);
 
+  const persist = useCallback((next) => {
+    setItems(next);
+    saveToStorage(typeof next === "function" ? next(loadFromStorage()) : next);
+  }, []);
+
   const reload = useCallback(async () => {
-    if (!configured) return;
+    if (!notionEnabled) return;
     setLoading(true);
     try {
       const data = await fetchLooseEnds();
       setItems(data);
+      saveToStorage(data);
     } catch {
-      /* silent — panel will just show empty */
+      /* keep localStorage version */
     }
     setLoading(false);
-  }, [configured]);
+  }, [notionEnabled]);
 
   useEffect(() => {
-    reload();
-  }, [reload]);
+    if (notionEnabled) reload();
+  }, [notionEnabled, reload]);
 
   const addItem = useCallback(
     async (title) => {
-      if (!configured || !title.trim()) return;
-      const tempId = `temp_${Date.now()}`;
-      setItems((prev) => [...prev, { id: tempId, title: title.trim() }]);
-      try {
-        const created = await addLooseEnd(title.trim());
-        setItems((prev) =>
-          prev.map((item) => (item.id === tempId ? created : item)),
-        );
-      } catch {
-        setItems((prev) => prev.filter((item) => item.id !== tempId));
+      if (!title.trim()) return;
+      const tempId = `local_${Date.now()}`;
+      const newItem = { id: tempId, title: title.trim() };
+      persist((prev) => [...prev, newItem]);
+      if (notionEnabled) {
+        try {
+          const created = await addLooseEnd(title.trim());
+          persist((prev) =>
+            prev.map((item) => (item.id === tempId ? created : item)),
+          );
+        } catch {
+          /* keep local version */
+        }
       }
     },
-    [configured],
+    [notionEnabled, persist],
   );
 
   const completeItem = useCallback(
     async (id) => {
-      if (!configured) return;
-      setItems((prev) => prev.filter((item) => item.id !== id));
-      try {
-        await completeLooseEnd(id);
-      } catch {
-        reload();
+      persist((prev) => prev.filter((item) => item.id !== id));
+      if (notionEnabled) {
+        try {
+          await completeLooseEnd(id);
+        } catch {
+          reload();
+        }
       }
     },
-    [configured, reload],
+    [notionEnabled, persist, reload],
   );
 
   const deleteItem = useCallback(
     async (id) => {
-      if (!configured) return;
-      setItems((prev) => prev.filter((item) => item.id !== id));
-      try {
-        await deleteLooseEnd(id);
-      } catch {
-        reload();
+      persist((prev) => prev.filter((item) => item.id !== id));
+      if (notionEnabled) {
+        try {
+          await deleteLooseEnd(id);
+        } catch {
+          reload();
+        }
       }
     },
-    [configured, reload],
+    [notionEnabled, persist, reload],
   );
 
-  return { configured, items, loading, addItem, completeItem, deleteItem, reload };
+  return { items, loading, addItem, completeItem, deleteItem, reload };
 };
