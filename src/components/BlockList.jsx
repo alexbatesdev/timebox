@@ -1,5 +1,6 @@
 import { fmtTime } from "../utils/time.js";
 import { TC, isWorkType } from "../data/theme.js";
+import AutoTextarea from "./AutoTextarea.jsx";
 
 export default function BlockList({
   blocks,
@@ -121,13 +122,12 @@ export default function BlockList({
               </div>
             </div>
             {!isPast && showTask && (
-              <textarea
+              <AutoTextarea
                 value={tasks[b.id] || ""}
                 onChange={(e) => onTaskChange(b.id, e.target.value)}
                 placeholder={
                   b.type === "meeting" ? "Notes..." : "Task for this block..."
                 }
-                rows={2}
                 style={{
                   width: "100%",
                   background: "#ffffff07",

@@ -5,10 +5,12 @@ export default function MeetingForm({
   mtgHour,
   mtgMinute,
   mtgDuration,
+  mtgIncludesLunch,
   onLabelChange,
   onHourChange,
   onMinuteChange,
   onDurationChange,
+  onIncludesLunchChange,
   onAdd,
   onToggle,
 }) {
@@ -187,6 +189,25 @@ export default function MeetingForm({
               </select>
             </div>
           </div>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              marginTop: "10px",
+              fontSize: "12px",
+              color: "#9ca3af",
+              cursor: "pointer",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={mtgIncludesLunch}
+              onChange={(e) => onIncludesLunchChange(e.target.checked)}
+              style={{ accentColor: "#a855f7" }}
+            />
+            Includes lunch
+          </label>
           <button
             onClick={onAdd}
             style={{

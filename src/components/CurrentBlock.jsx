@@ -1,5 +1,6 @@
 import { fmtTime } from "../utils/time.js";
 import { TC, isWorkType } from "../data/theme.js";
+import AutoTextarea from "./AutoTextarea.jsx";
 
 export default function CurrentBlock({ block, now, tasks, onTaskChange, onResize, onShift, onStepAway }) {
   const tc = TC[block?.type] || TC.work;
@@ -89,11 +90,10 @@ export default function CurrentBlock({ block, now, tasks, onTaskChange, onResize
       </div>
 
       {(isWorkType(block.type) || block.type === "meeting") && (
-        <textarea
+        <AutoTextarea
           value={tasks[block.id] || ""}
           onChange={(e) => onTaskChange(block.id, e.target.value)}
           placeholder={block.type === "meeting" ? "Notes..." : "What are you working on?"}
-          rows={2}
           style={{
             width: "100%",
             background: "#ffffff0e",

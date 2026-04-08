@@ -34,6 +34,7 @@ export default function App() {
   const [mtgHour, setMtgHour] = useState(14);
   const [mtgMinute, setMtgMinute] = useState(0);
   const [mtgDuration, setMtgDuration] = useState(30);
+  const [mtgIncludesLunch, setMtgIncludesLunch] = useState(false);
   const [exportStatus, setExportStatus] = useState(null);
   const [showAwayModal, setShowAwayModal] = useState(false);
   const [awayStart, setAwayStart] = useState(null);
@@ -174,6 +175,10 @@ export default function App() {
     setBlocks((prev) => {
       let newBlocks = prev.map((b) => ({ ...b }));
 
+      if (mtgIncludesLunch) {
+        newBlocks = newBlocks.filter((b) => b.id !== "lunch");
+      }
+
       newBlocks.push({
         id: meetingId,
         label: mtgLabel || "Meeting",
@@ -183,7 +188,8 @@ export default function App() {
       });
       newBlocks.sort((a, b) => a.start - b.start);
 
-      const pinned = new Set(["lunch"]);
+      const pinned = new Set();
+      if (!mtgIncludesLunch) pinned.add("lunch");
       newBlocks.forEach((b) => {
         if (b.type === "meeting") pinned.add(b.id);
       });
@@ -219,8 +225,9 @@ export default function App() {
 
     setTasks((p) => ({ ...p, [meetingId]: "" }));
     setMtgLabel("");
+    setMtgIncludesLunch(false);
     setShowMeetingForm(false);
-  }, [mtgLabel, mtgHour, mtgMinute, mtgDuration]);
+  }, [mtgLabel, mtgHour, mtgMinute, mtgDuration, mtgIncludesLunch]);
 
   const removeMeeting = (id) => {
     setBlocks((prev) => prev.filter((b) => b.id !== id));
@@ -391,10 +398,12 @@ export default function App() {
         mtgHour={mtgHour}
         mtgMinute={mtgMinute}
         mtgDuration={mtgDuration}
+        mtgIncludesLunch={mtgIncludesLunch}
         onLabelChange={setMtgLabel}
         onHourChange={setMtgHour}
         onMinuteChange={setMtgMinute}
         onDurationChange={setMtgDuration}
+        onIncludesLunchChange={setMtgIncludesLunch}
         onAdd={addMeeting}
         onToggle={setShowMeetingForm}
       />
