@@ -1,6 +1,13 @@
 import { fmtDate, fmtTime } from "../utils/time.js";
 
-export default function Header({ schedType, now, notifPerm, onRequestNotif, onTestNotif, onReload }) {
+export default function Header({
+  schedType,
+  now,
+  notifPerm,
+  onRequestNotif,
+  onTestNotif,
+  onReload,
+}) {
   return (
     <div
       style={{
@@ -13,7 +20,7 @@ export default function Header({ schedType, now, notifPerm, onRequestNotif, onTe
       <div>
         <div style={{ fontSize: "12px", color: "#6b7280" }}>{fmtDate()}</div>
         <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "2px" }}>
-          {schedType === "standup" ? "📢 Standup" : "🤫 No Standup"}
+          {schedType === "standup" ? "🟣 M-day" : "🟡 T-day"}
           <button
             onClick={onReload}
             style={{
