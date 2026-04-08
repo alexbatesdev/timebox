@@ -194,6 +194,16 @@ export default function App() {
         if (b.type === "meeting") pinned.add(b.id);
       });
 
+      // Truncate non-pinned blocks that overlap a pinned block's start
+      for (let i = 0; i < newBlocks.length - 1; i++) {
+        const curr = newBlocks[i];
+        const next = newBlocks[i + 1];
+        if (curr.end > next.start && !pinned.has(curr.id) && pinned.has(next.id)) {
+          newBlocks[i] = { ...curr, end: next.start };
+        }
+      }
+
+      // Push non-pinned blocks forward when they overlap a pinned block's end
       let changed = true;
       let iterations = 0;
       while (changed && iterations < 50) {
