@@ -427,18 +427,23 @@ export default function App() {
   };
 
   return (
-    <>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        minHeight: "100vh",
+        background: "#0a0a0a",
+        fontFamily: "system-ui,sans-serif",
+        color: "#e5e7eb",
+        transition: "padding 0.25s ease",
+      }}
+    >
       <div
         style={{
-          minHeight: "100vh",
-          background: "#0a0a0a",
-          fontFamily: "system-ui,sans-serif",
-          color: "#e5e7eb",
-          padding: "16px",
+          width: "100%",
           maxWidth: "600px",
-          margin: "0 auto",
-          position: "relative",
-          zIndex: 1,
+          padding: "16px",
+          flexShrink: 0,
         }}
       >
         <Header
@@ -529,6 +534,6 @@ export default function App() {
           onDelete={looseEnds.deleteItem}
         />
       )}
-    </>
+    </div>
   );
 }

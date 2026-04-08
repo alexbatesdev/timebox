@@ -19,58 +19,64 @@ export default function LooseEndsPanel({
   };
 
   return (
-    <>
+    <div
+      style={{
+        width: open ? "332px" : "32px",
+        flexShrink: 0,
+        transition: "width 0.25s ease",
+        position: "relative",
+        alignSelf: "stretch",
+      }}
+    >
       {/* Tab */}
+      <button
+        onClick={() => onToggle(!open)}
+        style={{
+          position: "absolute",
+          right: 0,
+          top: "80px",
+          width: "32px",
+          height: "48px",
+          background: "#1a1a1a",
+          border: "1px solid #333",
+          borderLeft: "none",
+          borderRadius: "0 8px 8px 0",
+          color: "#9ca3af",
+          fontSize: "14px",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 10,
+        }}
+        title="Loose Ends"
+      >
+        {items.length > 0 ? (
+          <span style={{ fontSize: "11px", fontWeight: "700" }}>{items.length}</span>
+        ) : (
+          "📋"
+        )}
+      </button>
 
-      {/* Panel */}
+      {/* Panel content */}
       <div
         style={{
           position: "absolute",
-          top: 0,
-          left: "50%",
+          right: "32px",
+          top: "16px",
+          bottom: "16px",
           width: "300px",
-          height: "100%",
           background: "#111",
           border: "1px solid #252525",
-          borderRadius: "12px 0 0 12px",
-          transform: open ? "translateX(0%)" : "translateX(325px)",
-          transition: "transform 0.25s ease",
-          zIndex: 0,
+          borderRadius: "12px",
           display: "flex",
           flexDirection: "column",
-          overflow: "visible",
+          overflow: "hidden",
+          opacity: open ? 1 : 0,
+          pointerEvents: open ? "auto" : "none",
+          transition: "opacity 0.2s ease",
         }}
       >
-        <button
-          onClick={() => onToggle(!open)}
-          style={{
-            position: "absolute",
-            left: "300px",
-            top: "80px",
-            width: "32px",
-            height: "48px",
-            background: "#1a1a1a",
-            border: "1px solid #333",
-            borderLeft: "none",
-            borderRadius: "0 8px 8px 0",
-            color: "#9ca3af",
-            fontSize: "14px",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 10,
-          }}
-          title="Loose Ends"
-        >
-          {items.length > 0 ? (
-            <span style={{ fontSize: "11px", fontWeight: "700" }}>
-              {items.length}
-            </span>
-          ) : (
-            "📋"
-          )}
-        </button>
         {/* Header */}
         <div
           style={{
@@ -81,9 +87,7 @@ export default function LooseEndsPanel({
             alignItems: "center",
           }}
         >
-          <div
-            style={{ fontSize: "14px", fontWeight: "700", color: "#e5e7eb" }}
-          >
+          <div style={{ fontSize: "14px", fontWeight: "700", color: "#e5e7eb" }}>
             📋 Loose Ends
           </div>
           <button
@@ -219,6 +223,6 @@ export default function LooseEndsPanel({
           ))}
         </div>
       </div>
-    </>
+    </div>
   );
 }
