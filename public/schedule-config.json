@@ -8,5 +8,38 @@
     "friday": "noStandup",
     "saturday": "noStandup",
     "sunday": "noStandup"
+  },
+  "schedules": {
+    "standup": {
+      "label": "M-day",
+      "emoji": "🟣",
+      "blocks": [
+        { "id": "plan", "label": "Plan the day", "start": "9:00", "end": "9:30", "type": "work" },
+        { "id": "sdup", "label": "Standup", "start": "9:30", "end": "10:00", "type": "meeting" },
+        { "id": "A", "label": "Block A", "start": "10:00", "end": "11:00", "type": "work" },
+        { "id": "brk1", "label": "Break", "start": "11:00", "end": "11:15", "type": "break" },
+        { "id": "B", "label": "Block B", "start": "11:15", "end": "12:45", "type": "work" },
+        { "id": "lunch", "label": "Lunch", "start": "12:45", "end": "1:15", "type": "break" },
+        { "id": "C", "label": "Block C", "start": "1:15", "end": "2:45", "type": "work" },
+        { "id": "brk2", "label": "Break", "start": "2:45", "end": "3:00", "type": "break" },
+        { "id": "D", "label": "Block D — Flex", "start": "3:00", "end": "4:45", "type": "flex-work" },
+        { "id": "wrap", "label": "Wrap up", "start": "4:45", "end": "5:00", "type": "wrapup" }
+      ]
+    },
+    "noStandup": {
+      "label": "T-day",
+      "emoji": "🟡",
+      "blocks": [
+        { "id": "plan", "label": "Plan the day", "start": "9:00", "end": "9:15", "type": "work" },
+        { "id": "A", "label": "Block A", "start": "9:15", "end": "11:00", "type": "work" },
+        { "id": "brk1", "label": "Break", "start": "11:00", "end": "11:15", "type": "break" },
+        { "id": "B", "label": "Block B", "start": "11:15", "end": "12:45", "type": "work" },
+        { "id": "lunch", "label": "Lunch", "start": "12:45", "end": "1:15", "type": "break" },
+        { "id": "C", "label": "Block C", "start": "1:15", "end": "2:45", "type": "work" },
+        { "id": "brk2", "label": "Break", "start": "2:45", "end": "3:00", "type": "break" },
+        { "id": "D", "label": "Block D — Flex", "start": "3:00", "end": "4:45", "type": "flex-work" },
+        { "id": "wrap", "label": "Wrap up", "start": "4:45", "end": "5:00", "type": "wrapup" }
+      ]
+    }
   }
 }

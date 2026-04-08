@@ -12,6 +12,7 @@ export const useScheduleInit = ({
   setWrapup,
   setNotionPageId,
   setConfigStatus,
+  setConfig,
   clearNotified,
 }) => {
   useEffect(() => {
@@ -26,6 +27,9 @@ export const useScheduleInit = ({
         setWrapup(saved.wrapup ?? { left: "", next: "" });
         setNotionPageId(saved.notionPageId ?? null);
         clearNotified();
+        // Still load config for labels/emoji/schedule templates
+        const config = await loadScheduleConfig();
+        if (!cancelled) setConfig(config);
         setConfigStatus("ready");
         return;
       }
@@ -46,6 +50,8 @@ export const useScheduleInit = ({
         setWrapup(notionState.snapshot.wrapup);
         setNotionPageId(notionState.pageId);
         clearNotified();
+        const config = await loadScheduleConfig();
+        if (!cancelled) setConfig(config);
         setConfigStatus("ready");
         return;
       }
@@ -53,13 +59,14 @@ export const useScheduleInit = ({
       const config = await loadScheduleConfig();
       if (cancelled) return;
 
+      setConfig(config);
+
       const weekday = getWeekdayKey();
       const nextType =
-        config.days[weekday] === "standup" ||
-        config.days[weekday] === "noStandup"
-          ? config.days[weekday]
-          : config.defaultType;
-      const nextState = resolveInitialState(nextType);
+        config.days[weekday] === undefined
+          ? config.defaultType
+          : config.days[weekday];
+      const nextState = resolveInitialState(nextType, config.schedules);
 
       setSchedType(nextState.schedType);
       setBlocks(nextState.blocks);

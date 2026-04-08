@@ -1,6 +1,8 @@
 export default function MeetingForm({
   show,
   hasFlexTime,
+  startHour,
+  endHour,
   mtgLabel,
   mtgHour,
   mtgMinute,
@@ -129,7 +131,7 @@ export default function MeetingForm({
                     flex: 1,
                   }}
                 >
-                  {Array.from({ length: 10 }, (_, i) => i + 8).map((h) => (
+                  {Array.from({ length: endHour - startHour + 1 }, (_, i) => i + startHour).map((h) => (
                     <option key={h} value={h}>
                       {h > 12 ? h - 12 : h} {h >= 12 ? "PM" : "AM"}
                     </option>

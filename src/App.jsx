@@ -28,6 +28,7 @@ export default function App() {
   const [wrapup, setWrapup] = useState({ left: "", next: "" });
   const [notionPageId, setNotionPageId] = useState(null);
   const [configStatus, setConfigStatus] = useState("loading");
+  const [config, setConfig] = useState(null);
 
   const [showMeetingForm, setShowMeetingForm] = useState(false);
   const [mtgLabel, setMtgLabel] = useState("");
@@ -51,11 +52,15 @@ export default function App() {
     setWrapup,
     setNotionPageId,
     setConfigStatus,
+    setConfig,
     clearNotified,
   });
 
+  const schedules = config?.schedules || {};
+
   const initSchedule = (type) => {
-    const nextState = createScheduleState(type);
+    const nextState = createScheduleState(type, schedules);
+    if (!nextState) return;
     setSchedType(nextState.schedType);
     setBlocks(nextState.blocks);
     setTasks(nextState.tasks);
@@ -67,13 +72,22 @@ export default function App() {
   const reloadScheduleFromConfig = async () => {
     clearState();
     setConfigStatus("loading");
-    const config = await loadScheduleConfig();
+    const freshConfig = await loadScheduleConfig();
+    setConfig(freshConfig);
     const weekday = getWeekdayKey();
     const nextType =
-      config.days[weekday] === "standup" || config.days[weekday] === "noStandup"
-        ? config.days[weekday]
-        : config.defaultType;
-    initSchedule(nextType);
+      freshConfig.days[weekday] !== undefined
+        ? freshConfig.days[weekday]
+        : freshConfig.defaultType;
+    const nextState = createScheduleState(nextType, freshConfig.schedules);
+    if (nextState) {
+      setSchedType(nextState.schedType);
+      setBlocks(nextState.blocks);
+      setTasks(nextState.tasks);
+      setWrapup(nextState.wrapup);
+      setNotionPageId(null);
+      clearNotified();
+    }
     setConfigStatus("ready");
   };
 
@@ -334,6 +348,8 @@ export default function App() {
   const cur = blocks[ci];
   const wrapBlock = blocks.find((b) => b.type === "wrapup");
   const hasFlexTime = blocks.some((b) => b.type === "flex-work");
+  const schedStartHour = blocks.length ? Math.floor(Math.min(...blocks.map((b) => b.start)) / 60) : 8;
+  const schedEndHour = blocks.length ? Math.ceil(Math.max(...blocks.map((b) => b.end)) / 60) : 18;
 
   const exportStatusMsg = {
     copied: "✅ Copied to clipboard!",
@@ -367,7 +383,8 @@ export default function App() {
       }}
     >
       <Header
-        schedType={schedType}
+        scheduleLabel={schedules[schedType]?.label || schedType}
+        scheduleEmoji={schedules[schedType]?.emoji || ""}
         now={now}
         notifPerm={notifPerm}
         onRequestNotif={requestNotif}
@@ -404,6 +421,8 @@ export default function App() {
       <MeetingForm
         show={showMeetingForm}
         hasFlexTime={hasFlexTime}
+        startHour={schedStartHour}
+        endHour={schedEndHour}
         mtgLabel={mtgLabel}
         mtgHour={mtgHour}
         mtgMinute={mtgMinute}

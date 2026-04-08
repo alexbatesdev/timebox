@@ -26,3 +26,7 @@ export const fmtTimeShort = (mins) => {
   return `${h12}:${String(m).padStart(2, "0")}`;
 };
 export const workdayHour = (h) => (h >= 1 && h <= 8 ? h + 12 : h);
+export const parseTimeStr = (str) => {
+  const [h, m] = str.split(":").map(Number);
+  return workdayHour(h) * 60 + (m || 0);
+};
