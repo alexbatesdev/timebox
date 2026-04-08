@@ -114,8 +114,7 @@ export default function App() {
 
       let shift = delta;
       for (let i = ci + 1; i < newBlocks.length; i++) {
-        if (newBlocks[i].type === "meeting") {
-          // Extend the block before the meeting to fill the gap
+        if (newBlocks[i].type === "meeting" || newBlocks[i].type === "wrapup") {
           if (shift < 0 && i > 0) {
             newBlocks[i - 1] = { ...newBlocks[i - 1], end: newBlocks[i].start };
           }
@@ -237,7 +236,7 @@ export default function App() {
       const pinned = new Set();
       if (!mtgIncludesLunch) pinned.add("lunch");
       newBlocks.forEach((b) => {
-        if (b.type === "meeting") pinned.add(b.id);
+        if (b.type === "meeting" || b.type === "wrapup") pinned.add(b.id);
       });
 
       // Truncate non-pinned blocks that overlap a pinned block's start
