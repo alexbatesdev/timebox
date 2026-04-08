@@ -1,7 +1,14 @@
 import { fmtTime } from "../utils/time.js";
 import { TC, isWorkType } from "../data/theme.js";
 
-export default function BlockList({ blocks, currentIndex, now, tasks, onTaskChange, onRemoveMeeting }) {
+export default function BlockList({
+  blocks,
+  currentIndex,
+  now,
+  tasks,
+  onTaskChange,
+  onRemoveMeeting,
+}) {
   return (
     <div
       style={{
@@ -17,6 +24,10 @@ export default function BlockList({ blocks, currentIndex, now, tasks, onTaskChan
         const btc = TC[b.type] || TC.work;
         const showTask = isWorkType(b.type) || b.type === "meeting";
         const isAddedMeeting = b.id.startsWith("mtg_");
+        // hide wrap-up block in list because it has its own section at the end
+        // The wrap-up block is still part of the blocks array and is used for notifications and
+        // timeline calculations, but it doesn't need to be displayed in the main block list.
+        if (b.type == "wrapup") return null;
         return (
           <div
             key={b.id}
@@ -113,7 +124,9 @@ export default function BlockList({ blocks, currentIndex, now, tasks, onTaskChan
               <textarea
                 value={tasks[b.id] || ""}
                 onChange={(e) => onTaskChange(b.id, e.target.value)}
-                placeholder={b.type === "meeting" ? "Notes..." : "Task for this block..."}
+                placeholder={
+                  b.type === "meeting" ? "Notes..." : "Task for this block..."
+                }
                 rows={2}
                 style={{
                   width: "100%",
