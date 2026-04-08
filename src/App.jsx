@@ -101,13 +101,37 @@ export default function App() {
 
   const resizeCurrentBlock = (delta) => {
     const ci = getCurIdx();
-    setBlocks((prev) =>
-      prev.map((b, i) => {
+    setBlocks((prev) => {
+      const newBlocks = prev.map((b, i) => {
         if (i === ci) return { ...b, end: b.end + delta };
-        if (i > ci) return { ...b, start: b.start + delta, end: b.end + delta };
-        return b;
-      }),
-    );
+        return { ...b };
+      });
+
+      let shift = delta;
+      for (let i = ci + 1; i < newBlocks.length; i++) {
+        if (newBlocks[i].type === "meeting") {
+          // Extend the block before the meeting to fill the gap
+          if (shift < 0 && i > 0) {
+            newBlocks[i - 1] = { ...newBlocks[i - 1], end: newBlocks[i].start };
+          }
+          shift = 0;
+          continue;
+        }
+        if (shift !== 0) {
+          if (newBlocks[i].type === "flex-work") {
+            newBlocks[i] = { ...newBlocks[i], start: newBlocks[i].start + shift };
+          } else {
+            newBlocks[i] = {
+              ...newBlocks[i],
+              start: newBlocks[i].start + shift,
+              end: newBlocks[i].end + shift,
+            };
+          }
+        }
+      }
+
+      return newBlocks.filter((b) => b.end > b.start);
+    });
   };
 
   const shiftCurrentBlock = (delta) => {
