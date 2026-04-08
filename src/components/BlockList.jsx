@@ -15,7 +15,7 @@ export default function BlockList({ blocks, currentIndex, now, tasks, onTaskChan
         if (i === currentIndex) return null;
         const isPast = now >= b.end;
         const btc = TC[b.type] || TC.work;
-        const showTask = isWorkType(b.type);
+        const showTask = isWorkType(b.type) || b.type === "meeting";
         const isAddedMeeting = b.id.startsWith("mtg_");
         return (
           <div
@@ -113,7 +113,7 @@ export default function BlockList({ blocks, currentIndex, now, tasks, onTaskChan
               <textarea
                 value={tasks[b.id] || ""}
                 onChange={(e) => onTaskChange(b.id, e.target.value)}
-                placeholder="Task for this block..."
+                placeholder={b.type === "meeting" ? "Notes..." : "Task for this block..."}
                 rows={2}
                 style={{
                   width: "100%",

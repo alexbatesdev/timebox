@@ -88,11 +88,11 @@ export default function CurrentBlock({ block, now, tasks, onTaskChange, onResize
         />
       </div>
 
-      {isWorkType(block.type) && (
+      {(isWorkType(block.type) || block.type === "meeting") && (
         <textarea
           value={tasks[block.id] || ""}
           onChange={(e) => onTaskChange(block.id, e.target.value)}
-          placeholder="What are you working on?"
+          placeholder={block.type === "meeting" ? "Notes..." : "What are you working on?"}
           rows={2}
           style={{
             width: "100%",
