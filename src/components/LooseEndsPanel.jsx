@@ -26,6 +26,7 @@ export default function LooseEndsPanel({
         transition: "width 0.25s ease",
         position: "relative",
         alignSelf: "stretch",
+        zIndex: 1,
       }}
     >
       {/* Tab */}
@@ -64,7 +65,7 @@ export default function LooseEndsPanel({
       <div
         style={{
           position: "absolute",
-          right: "32px",
+          right: open ? "30px" : "32px",
           top: "16px",
           bottom: "16px",
           width: "450px",
@@ -74,9 +75,8 @@ export default function LooseEndsPanel({
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
-          opacity: open ? 1 : 0,
           pointerEvents: open ? "auto" : "none",
-          transition: "opacity 0.2s ease",
+          transition: "0.2s ease",
         }}
       >
         {/* Header */}

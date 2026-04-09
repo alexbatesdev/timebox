@@ -241,7 +241,11 @@ export default function App() {
         if (b.type === "meeting" || b.type === "wrapup") continue;
         if (b.start < now + duration) {
           const dur = b.end - b.start;
-          newBlocks[i] = { ...b, start: now + duration, end: now + duration + dur };
+          newBlocks[i] = {
+            ...b,
+            start: now + duration,
+            end: now + duration + dur,
+          };
         }
       }
       newBlocks.sort((a, b) => a.start - b.start);
@@ -454,7 +458,8 @@ export default function App() {
 
   const ci = getCurIdx();
   const cur = blocks[ci];
-  const isAutoOpenBlock = cur && (cur.id === "plan" || cur.type === "flex-work");
+  const isAutoOpenBlock =
+    cur && (cur.id === "plan" || cur.type === "flex-work");
   const looseEndsOpen =
     looseEndsManualState !== null ? looseEndsManualState : isAutoOpenBlock;
   const wrapBlock = blocks.find((b) => b.type === "wrapup");
@@ -491,7 +496,6 @@ export default function App() {
         display: "flex",
         justifyContent: "center",
         minHeight: "100vh",
-        background: "#0a0a0a",
         fontFamily: "system-ui,sans-serif",
         color: "#e5e7eb",
         transition: "padding 0.25s ease",
@@ -503,6 +507,8 @@ export default function App() {
           maxWidth: "600px",
           padding: "16px",
           flexShrink: 0,
+          background: "#0a0a0a",
+          zIndex: 2,
         }}
       >
         <Header
