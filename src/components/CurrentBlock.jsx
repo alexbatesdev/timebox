@@ -15,6 +15,7 @@ export default function CurrentBlock({
   onQuickMeeting,
 }) {
   const [yesterdayWrapup] = useState(() => loadYesterdayWrapup());
+  const [shiftMode, setShiftMode] = useState("resize");
   const tc = TC[block?.type] || TC.work;
   const minsLeft = Math.max(0, block.end - now);
   const progress = Math.min(
@@ -170,26 +171,49 @@ export default function CurrentBlock({
       <div
         style={{
           display: "flex",
-          gap: "6px",
+          gap: "14px",
           alignItems: "center",
           marginTop: "12px",
           flexWrap: "wrap",
-          justifyContent: "space-between",
+          justifyContent: "center",
         }}
       >
-        <span
-          style={{ fontSize: "11px", color: "#4b5563", marginRight: "2px" }}
-        >
-          Resize:
+        <span style={{ display: "flex", gap: "2px" }}>
+          {["resize", "shift"].map((mode) => (
+            <button
+              key={mode}
+              onClick={() => setShiftMode(mode)}
+              style={{
+                padding: "4px 9px",
+                background: shiftMode === mode ? "#ffffff15" : "transparent",
+                border: `1px solid ${shiftMode === mode ? "#555" : "#333"}`,
+                color: shiftMode === mode ? "#e5e7eb" : "#4b5563",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontSize: "12px",
+                fontWeight: "600",
+                textTransform: "capitalize",
+              }}
+            >
+              {mode}
+            </button>
+          ))}
         </span>
-        <span>
+        <span
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+        >
           {[-15, -10, -5].map((d) => (
             <button
               key={d}
-              onClick={() => onResize(d)}
+              onClick={() =>
+                shiftMode === "resize" ? onResize(d) : onShift(d)
+              }
               style={{
-                padding: "4px 9px",
-                margin: "0 3px",
+                padding: "4px 15px",
                 background: "#ffffff0a",
                 border: "1px solid #22c55e40",
                 color: "#86efac",
@@ -205,66 +229,11 @@ export default function CurrentBlock({
           {[5, 10, 15].map((d) => (
             <button
               key={d}
-              onClick={() => onResize(d)}
+              onClick={() =>
+                shiftMode === "resize" ? onResize(d) : onShift(d)
+              }
               style={{
-                padding: "4px 9px",
-                margin: "0 3px",
-                background: "#ffffff0a",
-                border: "1px solid #ef444440",
-                color: "#fca5a5",
-                borderRadius: "6px",
-                cursor: "pointer",
-                fontSize: "12px",
-                fontWeight: "600",
-              }}
-            >
-              +{d}m
-            </button>
-          ))}
-        </span>
-      </div>
-      <div
-        style={{
-          display: "flex",
-          gap: "6px",
-          alignItems: "center",
-          marginTop: "6px",
-          flexWrap: "wrap",
-          justifyContent: "space-between",
-        }}
-      >
-        <span
-          style={{ fontSize: "11px", color: "#4b5563", marginRight: "2px" }}
-        >
-          Shift:
-        </span>
-        <span>
-          {[-15, -10, -5].map((d) => (
-            <button
-              key={d}
-              onClick={() => onShift(d)}
-              style={{
-                padding: "4px 9px",
-                margin: "0 3px",
-                background: "#ffffff0a",
-                border: "1px solid #22c55e40",
-                color: "#86efac",
-                borderRadius: "6px",
-                cursor: "pointer",
-                fontSize: "12px",
-                fontWeight: "600",
-              }}
-            >
-              {d}m
-            </button>
-          ))}
-          {[5, 10, 15].map((d) => (
-            <button
-              key={d}
-              onClick={() => onShift(d)}
-              style={{
-                padding: "4px 9px",
-                margin: "0 3px",
+                padding: "4px 15px",
                 background: "#ffffff0a",
                 border: "1px solid #ef444440",
                 color: "#fca5a5",
