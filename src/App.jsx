@@ -20,6 +20,7 @@ import MeetingForm from "./components/MeetingForm.jsx";
 import BlockList from "./components/BlockList.jsx";
 import WrapupSection from "./components/WrapupSection.jsx";
 import ExportBar from "./components/ExportBar.jsx";
+import QuickMeetingModal from "./components/QuickMeetingModal.jsx";
 import LooseEndsPanel from "./components/LooseEndsPanel.jsx";
 
 /* ── app ──────────────────────────────────────────────────── */
@@ -44,6 +45,11 @@ export default function App() {
   const [awayAbsorbFlex, setAwayAbsorbFlex] = useState(true);
   const [awayManualMins, setAwayManualMins] = useState(15);
   const [looseEndsManualState, setLooseEndsManualState] = useState(null);
+  const [showQuickMtgModal, setShowQuickMtgModal] = useState(false);
+  const [quickMtgStart, setQuickMtgStart] = useState(null);
+  const [quickMtgLabel, setQuickMtgLabel] = useState("");
+  const [quickMtgManualMins, setQuickMtgManualMins] = useState(30);
+  const [quickMtgConsumeFrom, setQuickMtgConsumeFrom] = useState("current");
 
   const now = useClock();
   const { notifPerm, requestNotif, clearNotified, testNotif } =
@@ -209,6 +215,63 @@ export default function App() {
 
   const manualPause = () => {
     insertAwayBlock(awayManualMins, awayAbsorbFlex);
+  };
+
+  /* ── quick meeting ───────────────────────────────────── */
+  const insertQuickMeeting = (duration, label, consumeFrom) => {
+    const ci = getCurIdx();
+    const meetingId = `mtg_${Date.now()}`;
+    setBlocks((prev) => {
+      const newBlocks = prev.map((b, i) => {
+        if (i === ci) return { ...b, end: now };
+        return { ...b };
+      });
+
+      newBlocks.splice(ci + 1, 0, {
+        id: meetingId,
+        label: label || "Meeting",
+        start: now,
+        end: now + duration,
+        type: "meeting",
+      });
+
+      // Push breaks and lunch after the meeting
+      for (let i = ci + 2; i < newBlocks.length; i++) {
+        const b = newBlocks[i];
+        if (b.type === "meeting" || b.type === "wrapup") continue;
+        if (b.start < now + duration) {
+          const dur = b.end - b.start;
+          newBlocks[i] = { ...b, start: now + duration, end: now + duration + dur };
+        }
+      }
+      newBlocks.sort((a, b) => a.start - b.start);
+
+      if (consumeFrom === "flex") {
+        const flexIdx = newBlocks.findIndex((b) => b.type === "flex-work");
+        if (flexIdx >= 0) {
+          const flex = newBlocks[flexIdx];
+          const newEnd = Math.max(flex.start, flex.end - duration);
+          newBlocks[flexIdx] = { ...flex, end: newEnd };
+        }
+      }
+
+      return newBlocks.filter((b) => b.end > b.start);
+    });
+    setTasks((p) => ({ ...p, [meetingId]: "" }));
+    setShowQuickMtgModal(false);
+    setQuickMtgStart(null);
+    setQuickMtgLabel("");
+  };
+
+  const startQuickMtg = () => setQuickMtgStart(now);
+
+  const endQuickMtg = () => {
+    const duration = Math.max(1, now - quickMtgStart);
+    insertQuickMeeting(duration, quickMtgLabel, quickMtgConsumeFrom);
+  };
+
+  const manualQuickMtg = () => {
+    insertQuickMeeting(quickMtgManualMins, quickMtgLabel, quickMtgConsumeFrom);
   };
 
   /* ── add meeting ─────────────────────────────────────── */
@@ -461,6 +524,7 @@ export default function App() {
             onResize={resizeCurrentBlock}
             onShift={shiftCurrentBlock}
             onStepAway={() => setShowAwayModal(true)}
+            onQuickMeeting={() => setShowQuickMtgModal(true)}
           />
         )}
 
@@ -476,6 +540,22 @@ export default function App() {
           onEndPause={endPause}
           onManualPause={manualPause}
           onClose={() => setShowAwayModal(false)}
+        />
+
+        <QuickMeetingModal
+          show={showQuickMtgModal}
+          meetingStart={quickMtgStart}
+          now={now}
+          label={quickMtgLabel}
+          manualMins={quickMtgManualMins}
+          consumeFrom={quickMtgConsumeFrom}
+          onLabelChange={setQuickMtgLabel}
+          onManualMinsChange={setQuickMtgManualMins}
+          onConsumeFromChange={setQuickMtgConsumeFrom}
+          onStartTimer={startQuickMtg}
+          onEndTimer={endQuickMtg}
+          onManualAdd={manualQuickMtg}
+          onClose={() => setShowQuickMtgModal(false)}
         />
 
         <MeetingForm

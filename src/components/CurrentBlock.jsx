@@ -4,7 +4,16 @@ import { TC, isWorkType } from "../data/theme.js";
 import { loadYesterdayWrapup } from "../utils/storage.js";
 import AutoTextarea from "./AutoTextarea.jsx";
 
-export default function CurrentBlock({ block, now, tasks, onTaskChange, onResize, onShift, onStepAway }) {
+export default function CurrentBlock({
+  block,
+  now,
+  tasks,
+  onTaskChange,
+  onResize,
+  onShift,
+  onStepAway,
+  onQuickMeeting,
+}) {
   const [yesterdayWrapup] = useState(() => loadYesterdayWrapup());
   const tc = TC[block?.type] || TC.work;
   const minsLeft = Math.max(0, block.end - now);
@@ -52,9 +61,7 @@ export default function CurrentBlock({ block, now, tasks, onTaskChange, onResize
           >
             {block.label}
           </div>
-          <div
-            style={{ fontSize: "12px", color: "#6b7280", marginTop: "2px" }}
-          >
+          <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "2px" }}>
             {fmtTime(block.start)} – {fmtTime(block.end)}
           </div>
         </div>
@@ -92,40 +99,58 @@ export default function CurrentBlock({ block, now, tasks, onTaskChange, onResize
         />
       </div>
 
-      {block.id === "plan" && yesterdayWrapup && (yesterdayWrapup.left || yesterdayWrapup.next) && (
-        <div
-          style={{
-            background: "#ffffff08",
-            border: "1px solid #ffffff12",
-            borderRadius: "8px",
-            padding: "10px 12px",
-            marginBottom: "12px",
-            fontSize: "12px",
-          }}
-        >
-          <div style={{ color: "#6b7280", fontWeight: "600", marginBottom: "6px" }}>
-            Yesterday's wrap-up
+      {block.id === "plan" &&
+        yesterdayWrapup &&
+        (yesterdayWrapup.left || yesterdayWrapup.next) && (
+          <div
+            style={{
+              background: "#ffffff08",
+              border: "1px solid #ffffff12",
+              borderRadius: "8px",
+              padding: "10px 12px",
+              marginBottom: "12px",
+              fontSize: "12px",
+            }}
+          >
+            <div
+              style={{
+                color: "#6b7280",
+                fontWeight: "600",
+                marginBottom: "6px",
+              }}
+            >
+              Yesterday's wrap-up
+            </div>
+            {yesterdayWrapup.left && (
+              <div style={{ marginBottom: "6px" }}>
+                <div style={{ color: "#6b7280", fontSize: "11px" }}>
+                  Where I left off
+                </div>
+                <div style={{ color: "#9ca3af", whiteSpace: "pre-wrap" }}>
+                  {yesterdayWrapup.left}
+                </div>
+              </div>
+            )}
+            {yesterdayWrapup.next && (
+              <div>
+                <div style={{ color: "#6b7280", fontSize: "11px" }}>
+                  What's next
+                </div>
+                <div style={{ color: "#9ca3af", whiteSpace: "pre-wrap" }}>
+                  {yesterdayWrapup.next}
+                </div>
+              </div>
+            )}
           </div>
-          {yesterdayWrapup.left && (
-            <div style={{ marginBottom: "6px" }}>
-              <div style={{ color: "#6b7280", fontSize: "11px" }}>Where I left off</div>
-              <div style={{ color: "#9ca3af", whiteSpace: "pre-wrap" }}>{yesterdayWrapup.left}</div>
-            </div>
-          )}
-          {yesterdayWrapup.next && (
-            <div>
-              <div style={{ color: "#6b7280", fontSize: "11px" }}>What's next</div>
-              <div style={{ color: "#9ca3af", whiteSpace: "pre-wrap" }}>{yesterdayWrapup.next}</div>
-            </div>
-          )}
-        </div>
-      )}
+        )}
 
       {(isWorkType(block.type) || block.type === "meeting") && (
         <AutoTextarea
           value={tasks[block.id] || ""}
           onChange={(e) => onTaskChange(block.id, e.target.value)}
-          placeholder={block.type === "meeting" ? "Notes..." : "What are you working on?"}
+          placeholder={
+            block.type === "meeting" ? "Notes..." : "What are you working on?"
+          }
           style={{
             width: "100%",
             background: "#ffffff0e",
@@ -255,23 +280,40 @@ export default function CurrentBlock({ block, now, tasks, onTaskChange, onResize
         </span>
       </div>
 
-      <button
-        onClick={onStepAway}
-        style={{
-          marginTop: "10px",
-          width: "100%",
-          padding: "8px",
-          background: "#2a220010",
-          border: "1px solid #eab30840",
-          color: "#fde047",
-          borderRadius: "6px",
-          cursor: "pointer",
-          fontSize: "12px",
-          fontWeight: "600",
-        }}
-      >
-        ⏸️ Step Away
-      </button>
+      <div style={{ display: "flex", gap: "8px", marginTop: "10px" }}>
+        <button
+          onClick={onStepAway}
+          style={{
+            flex: 1,
+            padding: "8px",
+            background: "#2a220010",
+            border: "1px solid #eab30840",
+            color: "#fde047",
+            borderRadius: "6px",
+            cursor: "pointer",
+            fontSize: "12px",
+            fontWeight: "600",
+          }}
+        >
+          ⏸️ Step Away
+        </button>
+        <button
+          onClick={onQuickMeeting}
+          style={{
+            flex: 1,
+            padding: "8px",
+            background: "#1e0f3a10",
+            border: "1px solid #a855f740",
+            color: "#d8b4fe",
+            borderRadius: "6px",
+            cursor: "pointer",
+            fontSize: "12px",
+            fontWeight: "600",
+          }}
+        >
+          📅 Step Into Meeting
+        </button>
+      </div>
     </div>
   );
 }
