@@ -21,7 +21,7 @@ export default function LooseEndsPanel({
   return (
     <div
       style={{
-        width: open ? "332px" : "32px",
+        width: open ? "calc(450px + 32px)" : "32px",
         flexShrink: 0,
         transition: "width 0.25s ease",
         position: "relative",
@@ -52,7 +52,9 @@ export default function LooseEndsPanel({
         title="Loose Ends"
       >
         {items.length > 0 ? (
-          <span style={{ fontSize: "11px", fontWeight: "700" }}>{items.length}</span>
+          <span style={{ fontSize: "11px", fontWeight: "700" }}>
+            {items.length}
+          </span>
         ) : (
           "📋"
         )}
@@ -65,7 +67,7 @@ export default function LooseEndsPanel({
           right: "32px",
           top: "16px",
           bottom: "16px",
-          width: "300px",
+          width: "450px",
           background: "#111",
           border: "1px solid #252525",
           borderRadius: "12px",
@@ -87,7 +89,9 @@ export default function LooseEndsPanel({
             alignItems: "center",
           }}
         >
-          <div style={{ fontSize: "14px", fontWeight: "700", color: "#e5e7eb" }}>
+          <div
+            style={{ fontSize: "14px", fontWeight: "700", color: "#e5e7eb" }}
+          >
             📋 Loose Ends
           </div>
           <button
@@ -112,10 +116,17 @@ export default function LooseEndsPanel({
             borderBottom: "1px solid #1f1f1f",
           }}
         >
-          <input
+          <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit(e);
+              }
+            }}
             placeholder="Add a loose end..."
+            rows={2}
             style={{
               width: "100%",
               background: "#ffffff0a",
@@ -126,6 +137,8 @@ export default function LooseEndsPanel({
               fontSize: "13px",
               outline: "none",
               boxSizing: "border-box",
+              resize: "vertical",
+              fontFamily: "inherit",
             }}
           />
         </form>
@@ -167,9 +180,10 @@ export default function LooseEndsPanel({
               key={item.id}
               style={{
                 display: "flex",
-                alignItems: "center",
+                alignItems: "flex-start",
                 gap: "8px",
-                padding: "6px 16px",
+                padding: "10px 16px",
+                borderBottom: "1px solid #1f1f1f",
               }}
             >
               <button
@@ -182,12 +196,13 @@ export default function LooseEndsPanel({
                   width: "20px",
                   height: "20px",
                   cursor: "pointer",
-                  color: "#22c55e",
+                  color: "#6b7280",
                   fontSize: "12px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   flexShrink: 0,
+                  marginTop: "1px",
                   padding: 0,
                 }}
               >
@@ -198,8 +213,9 @@ export default function LooseEndsPanel({
                   flex: 1,
                   fontSize: "13px",
                   color: "#d1d5db",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                  textAlign: "left",
                 }}
               >
                 {item.title}
@@ -210,11 +226,12 @@ export default function LooseEndsPanel({
                 style={{
                   background: "none",
                   border: "none",
-                  color: "#4b5563",
+                  color: "#ef4444",
                   cursor: "pointer",
                   fontSize: "13px",
                   padding: "0 2px",
                   flexShrink: 0,
+                  marginTop: "1px",
                 }}
               >
                 ✕
