@@ -108,7 +108,6 @@ function SubtaskNode({ task, depth, onToggleExpanded, onToggleDescExpanded }) {
           alignItems: "center",
           gap: "6px",
           padding: "4px 0",
-          paddingLeft: depth * 16,
           borderBottom: "1px solid #1a1a1a",
         }}
       >
@@ -147,21 +146,6 @@ function SubtaskNode({ task, depth, onToggleExpanded, onToggleDescExpanded }) {
         >
           {task.name}
         </span>
-        {task.boardColumn && (
-          <span
-            style={{
-              fontSize: "9px",
-              padding: "1px 5px",
-              borderRadius: "9999px",
-              background: task.boardColumn.color || "#333",
-              color: "#fff",
-              whiteSpace: "nowrap",
-              flexShrink: 0,
-            }}
-          >
-            {task.boardColumn.name || "—"}
-          </span>
-        )}
         <a
           href={taskUrl(task.id)}
           target="_blank"
@@ -178,7 +162,7 @@ function SubtaskNode({ task, depth, onToggleExpanded, onToggleDescExpanded }) {
         </a>
       </div>
       {task.expanded && (
-        <div style={{ paddingLeft: depth * 16 }}>
+        <div style={{ paddingLeft: 16 }}>
           <DescriptionCard task={task} onToggle={onToggleDescExpanded} />
           {task.hasSubtasks && !task.subtasks && (
             <div
@@ -212,14 +196,11 @@ export default function TeamworkPanel({
   onToggle,
   tasks,
   projects,
-  boardColumns,
   loading,
   selectedProjectId,
   onProjectChange,
   onToggleExpanded,
   onToggleDescExpanded,
-  onChangeStage,
-  onChangeTags,
 }) {
   return (
     <div
@@ -417,21 +398,6 @@ export default function TeamworkPanel({
                 >
                   {task.name}
                 </span>
-                {task.boardColumn && (
-                  <span
-                    style={{
-                      fontSize: "10px",
-                      padding: "2px 6px",
-                      borderRadius: "9999px",
-                      background: task.boardColumn.color || "#333",
-                      color: "#fff",
-                      whiteSpace: "nowrap",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {task.boardColumn.name || "—"}
-                  </span>
-                )}
                 <a
                   href={taskUrl(task.id)}
                   target="_blank"
@@ -487,33 +453,6 @@ export default function TeamworkPanel({
                           {tag.name}
                         </span>
                       ))}
-                    </div>
-                  )}
-
-                  {/* Stage dropdown */}
-                  {boardColumns.length > 0 && (
-                    <div style={{ marginBottom: "8px" }}>
-                      <select
-                        value={task.boardColumn?.id || ""}
-                        onChange={(e) => onChangeStage(task.id, e.target.value)}
-                        style={{
-                          background: "#1a1a1a",
-                          border: "1px solid #333",
-                          borderRadius: "4px",
-                          padding: "4px 8px",
-                          color: "#f9fafb",
-                          fontSize: "11px",
-                          outline: "none",
-                          fontFamily: "inherit",
-                        }}
-                      >
-                        <option value="">— Stage —</option>
-                        {boardColumns.map((col) => (
-                          <option key={col.id} value={col.id}>
-                            {col.name}
-                          </option>
-                        ))}
-                      </select>
                     </div>
                   )}
 

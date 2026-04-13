@@ -31,7 +31,6 @@ const mapTask = (t, projectId, projectName) => {
     projectName: projectName || "",
     description: t.description || "",
     tags: (t.tags || []).map((tag) => ({ id: tag.id, name: tag.name, color: tag.color })),
-    boardColumn: t.workflowStages?.[0] || null,
     hasSubtasks,
     subtasks: null,
     expanded: false,
@@ -78,33 +77,6 @@ export const fetchTaskSubtasks = async (taskId) => {
     `/projects/api/v3/tasks/${taskId}/subtasks.json?includeCompletedTasks=false&includeRelatedTasks=true&pageSize=250`
   );
   return (data.tasks || []).map((t) => mapTask(t, "", ""));
-};
-
-// Cached per project to avoid re-fetching
-const columnsCache = {};
-export const fetchBoardColumns = async (projectId) => {
-  if (columnsCache[projectId]) return columnsCache[projectId];
-  try {
-    const projectData = await twFetch(`/projects/api/v3/projects/${projectId}.json`);
-    const workflows = projectData.project?.workflows || [];
-    if (!workflows.length) return [];
-    const workflowId = workflows[0].id;
-    const stagesData = await twFetch(`/projects/api/v3/workflows/${workflowId}/stages.json`);
-    const columns = (stagesData.stages || []).map((s) => ({ id: s.id, name: s.name, color: s.color }));
-    columnsCache[projectId] = columns;
-    return columns;
-  } catch {
-    return [];
-  }
-};
-
-export const updateTaskColumn = async (taskId, columnId) => {
-  const res = await fetch(`/api/teamwork/projects/api/v3/tasks/${taskId}.json`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ task: { boardColumnId: columnId } }),
-  });
-  if (!res.ok) throw new Error(`Failed to update task stage (${res.status})`);
 };
 
 export const updateTaskTags = async (taskId, tagIds) => {

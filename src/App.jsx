@@ -511,14 +511,11 @@ export default function App() {
           onToggle={setTeamworkOpen}
           tasks={teamwork.tasks}
           projects={teamwork.projects}
-          boardColumns={teamwork.boardColumns}
           loading={teamwork.loading}
           selectedProjectId={teamwork.selectedProjectId}
           onProjectChange={teamwork.setProject}
           onToggleExpanded={teamwork.toggleExpanded}
           onToggleDescExpanded={teamwork.toggleDescExpanded}
-          onChangeStage={teamwork.changeStage}
-          onChangeTags={teamwork.changeTags}
         />
       )}
       <div

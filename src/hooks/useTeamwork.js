@@ -3,8 +3,6 @@ import {
   isTeamworkConfigured,
   fetchMyTasks,
   fetchTaskSubtasks,
-  fetchBoardColumns,
-  updateTaskColumn,
   updateTaskTags,
 } from "../teamwork/api.js";
 
@@ -12,7 +10,6 @@ export const useTeamwork = () => {
   const configured = isTeamworkConfigured();
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
-  const [boardColumns, setBoardColumns] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState(null);
 
@@ -21,7 +18,6 @@ export const useTeamwork = () => {
     setLoading(true);
     try {
       const result = await fetchMyTasks();
-      console.log("fetched teamwork tasks", result.tasks);
       setTasks(result.tasks);
       setProjects(result.projects);
     } catch {
@@ -33,16 +29,6 @@ export const useTeamwork = () => {
   useEffect(() => {
     reload();
   }, [reload]);
-
-  const loadColumnsForProject = useCallback(async (projectId) => {
-    if (!projectId) return;
-    try {
-      const cols = await fetchBoardColumns(projectId);
-      setBoardColumns(cols);
-    } catch {
-      setBoardColumns([]);
-    }
-  }, []);
 
   const setProject = useCallback((id) => {
     setSelectedProjectId(id || null);
@@ -60,7 +46,6 @@ export const useTeamwork = () => {
 
   const toggleExpanded = useCallback(
     (taskId) => {
-      // Find the task in the tree to check if we need to load subtasks
       const findTask = (tasks) => {
         for (const t of tasks) {
           if (t.id === taskId) return t;
@@ -75,7 +60,6 @@ export const useTeamwork = () => {
       setTasks((prev) => {
         const task = findTask(prev);
         if (task && task.subtasks === null && !task.expanded) {
-          // Load subtasks lazily
           fetchTaskSubtasks(taskId).then((subs) => {
             const attachSubs = (tasks) =>
               tasks.map((t) => {
@@ -98,27 +82,10 @@ export const useTeamwork = () => {
     },
     [],
   );
+
   const toggleDescExpanded = useCallback(
     (taskId) => toggleInTree(taskId, "descExpanded"),
     [toggleInTree],
-  );
-
-  const changeStage = useCallback(
-    async (taskId, columnId) => {
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.id === taskId
-            ? { ...t, boardColumn: { ...t.boardColumn, id: columnId } }
-            : t,
-        ),
-      );
-      try {
-        await updateTaskColumn(taskId, columnId);
-      } catch {
-        reload();
-      }
-    },
-    [reload],
   );
 
   const changeTags = useCallback(
@@ -136,24 +103,17 @@ export const useTeamwork = () => {
   const filteredTasks = selectedProjectId
     ? tasks.filter((t) => String(t.projectId) === String(selectedProjectId))
     : tasks;
-  console.log("first task projectId", tasks[0]);
-  console.log("selectedProjectId", selectedProjectId);
-  console.log("teamwork tasks", filteredTasks);
 
   return {
     configured,
     tasks: filteredTasks,
-    allTasks: tasks,
     projects,
-    boardColumns,
     loading,
     selectedProjectId,
     setProject,
     toggleExpanded,
     toggleDescExpanded,
-    changeStage,
     changeTags,
-    loadColumnsForProject,
     reload,
   };
 };
