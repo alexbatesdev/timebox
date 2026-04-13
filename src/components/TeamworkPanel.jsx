@@ -98,8 +98,8 @@ function DescriptionCard({ task, onToggle }) {
 }
 
 function SubtaskNode({ task, depth, onToggleExpanded, onToggleDescExpanded }) {
-  const hasChildren = task.subtasks === null || task.subtasks?.length > 0;
-  const hasContent = task.description || hasChildren;
+  const hasChildren = task.subtasks?.length > 0;
+  const hasContent = task.description || hasChildren || task.hasSubtasks;
   return (
     <div>
       <div
@@ -117,7 +117,12 @@ function SubtaskNode({ task, depth, onToggleExpanded, onToggleDescExpanded }) {
           style={{
             background: "none",
             border: "none",
-            color: hasChildren ? "#d1d5db" : hasContent ? "#6b7280" : "#333",
+            color:
+              hasChildren || task.hasSubtasks
+                ? "#d1d5db"
+                : hasContent
+                  ? "#6b7280"
+                  : "#333",
             cursor: hasContent ? "pointer" : "default",
             fontSize: "10px",
             padding: "0 4px",
@@ -176,7 +181,14 @@ function SubtaskNode({ task, depth, onToggleExpanded, onToggleDescExpanded }) {
         <div style={{ paddingLeft: depth * 16 }}>
           <DescriptionCard task={task} onToggle={onToggleDescExpanded} />
           {task.hasSubtasks && !task.subtasks && (
-            <div style={{ padding: "4px 0", fontSize: "11px", color: "#4b5563", fontStyle: "italic" }}>
+            <div
+              style={{
+                padding: "4px 0",
+                fontSize: "11px",
+                color: "#4b5563",
+                fontStyle: "italic",
+              }}
+            >
               Loading subtasks…
             </div>
           )}
@@ -348,7 +360,7 @@ export default function TeamworkPanel({
                 textAlign: "center",
               }}
             >
-              Loading…
+              Loading tasks...
             </div>
           )}
           {!loading && tasks.length === 0 && (

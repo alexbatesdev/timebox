@@ -21,25 +21,28 @@ const getMyUserId = async () => {
   return String(id);
 };
 
-const mapTask = (t, projectId, projectName) => ({
-  id: t.id,
-  name: t.name,
-  parentTaskId: t.parentTaskId || t.parentTask?.id || null,
-  projectId: projectId || "",
-  projectName: projectName || "",
-  description: t.description || "",
-  tags: (t.tags || []).map((tag) => ({ id: tag.id, name: tag.name, color: tag.color })),
-  boardColumn: t.workflowStages?.[0] || null,
-  hasSubtasks: Array.isArray(t.subTaskIds) && t.subTaskIds.length > 0,
-  subtasks: null,
-  expanded: false,
-  descExpanded: true,
-});
+const mapTask = (t, projectId, projectName) => {
+  const hasSubtasks = Array.isArray(t.subTaskIds) && t.subTaskIds.length > 0;
+  return {
+    id: t.id,
+    name: t.name,
+    parentTaskId: t.parentTaskId || t.parentTask?.id || null,
+    projectId: projectId || "",
+    projectName: projectName || "",
+    description: t.description || "",
+    tags: (t.tags || []).map((tag) => ({ id: tag.id, name: tag.name, color: tag.color })),
+    boardColumn: t.workflowStages?.[0] || null,
+    hasSubtasks,
+    subtasks: null,
+    expanded: false,
+    descExpanded: !hasSubtasks,
+  };
+};
 
 export const fetchMyTasks = async () => {
   const userId = await getMyUserId();
   const data = await twFetch(
-    `/projects/api/v3/tasks.json?responsiblePartyIds=${userId}&includeCompletedTasks=false&getSubTasks=false&include=projects,tasklists,tags&pageSize=250`
+    `/projects/api/v3/tasks.json?responsiblePartyIds=${userId}&includeCompletedTasks=false&getSubTasks=false&includeRelatedTasks=true&include=projects,tasklists,tags&pageSize=250`
   );
 
   // Build project map from included data
@@ -62,7 +65,7 @@ export const fetchMyTasks = async () => {
     .map((t) => {
       const tasklistId = String(t.tasklist?.id || t.tasklistId || "");
       const projectId = tasklistToProject[tasklistId] || "";
-      return mapTask(t, projectId, projectMap[projectId]?.name || "");
+      return { ...mapTask(t, projectId, projectMap[projectId]?.name || ""), descExpanded: true };
     });
 
   const projects = Object.values(projectMap).sort((a, b) => a.name.localeCompare(b.name));
@@ -72,7 +75,7 @@ export const fetchMyTasks = async () => {
 
 export const fetchTaskSubtasks = async (taskId) => {
   const data = await twFetch(
-    `/projects/api/v3/tasks/${taskId}/subtasks.json?includeCompletedTasks=false&pageSize=250`
+    `/projects/api/v3/tasks/${taskId}/subtasks.json?includeCompletedTasks=false&includeRelatedTasks=true&pageSize=250`
   );
   return (data.tasks || []).map((t) => mapTask(t, "", ""));
 };
