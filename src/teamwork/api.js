@@ -1,0 +1,114 @@
+const site = () => import.meta.env.VITE_TEAMWORK_SITE;
+const configured = () => Boolean(site() && import.meta.env.VITE_TEAMWORK_API_KEY);
+
+export const isTeamworkConfigured = configured;
+
+const twFetch = async (path) => {
+  const res = await fetch(`/api/teamwork${path}`);
+  if (!res.ok) throw new Error(`Teamwork API error (${res.status})`);
+  return res.json();
+};
+
+export const taskUrl = (taskId) => `https://${site()}/app/tasks/${taskId}`;
+
+const USERID_KEY = "timebox-tw-userid";
+const getMyUserId = async () => {
+  const cached = localStorage.getItem(USERID_KEY);
+  if (cached) return cached;
+  const data = await twFetch('/projects/api/v3/me.json');
+  const id = data.person?.id;
+  if (id) localStorage.setItem(USERID_KEY, String(id));
+  return String(id);
+};
+
+const mapTask = (t, projectId, projectName) => ({
+  id: t.id,
+  name: t.name,
+  parentTaskId: t.parentTaskId || t.parentTask?.id || null,
+  projectId: projectId || "",
+  projectName: projectName || "",
+  description: t.description || "",
+  tags: (t.tags || []).map((tag) => ({ id: tag.id, name: tag.name, color: tag.color })),
+  boardColumn: t.workflowStages?.[0] || null,
+  hasSubtasks: Array.isArray(t.subTaskIds) && t.subTaskIds.length > 0,
+  subtasks: null,
+  expanded: false,
+  descExpanded: true,
+});
+
+export const fetchMyTasks = async () => {
+  const userId = await getMyUserId();
+  const data = await twFetch(
+    `/projects/api/v3/tasks.json?responsiblePartyIds=${userId}&includeCompletedTasks=false&getSubTasks=false&include=projects,tasklists,tags&pageSize=250`
+  );
+
+  // Build project map from included data
+  const includedProjects = data.included?.projects || {};
+  const projectMap = {};
+  for (const [id, proj] of Object.entries(includedProjects)) {
+    projectMap[id] = { id: String(id), name: proj.name || `Project ${id}` };
+  }
+
+  // Build tasklist → project mapping
+  const includedTasklists = data.included?.tasklists || {};
+  const tasklistToProject = {};
+  for (const [id, tl] of Object.entries(includedTasklists)) {
+    const projId = String(tl.project?.id || tl.projectId || "");
+    if (projId) tasklistToProject[id] = projId;
+  }
+
+  const tasks = (data.tasks || [])
+    .filter((t) => !t.parentTaskId && !t.parentTask?.id)
+    .map((t) => {
+      const tasklistId = String(t.tasklist?.id || t.tasklistId || "");
+      const projectId = tasklistToProject[tasklistId] || "";
+      return mapTask(t, projectId, projectMap[projectId]?.name || "");
+    });
+
+  const projects = Object.values(projectMap).sort((a, b) => a.name.localeCompare(b.name));
+
+  return { tasks, projects };
+};
+
+export const fetchTaskSubtasks = async (taskId) => {
+  const data = await twFetch(
+    `/projects/api/v3/tasks/${taskId}/subtasks.json?includeCompletedTasks=false&pageSize=250`
+  );
+  return (data.tasks || []).map((t) => mapTask(t, "", ""));
+};
+
+// Cached per project to avoid re-fetching
+const columnsCache = {};
+export const fetchBoardColumns = async (projectId) => {
+  if (columnsCache[projectId]) return columnsCache[projectId];
+  try {
+    const projectData = await twFetch(`/projects/api/v3/projects/${projectId}.json`);
+    const workflows = projectData.project?.workflows || [];
+    if (!workflows.length) return [];
+    const workflowId = workflows[0].id;
+    const stagesData = await twFetch(`/projects/api/v3/workflows/${workflowId}/stages.json`);
+    const columns = (stagesData.stages || []).map((s) => ({ id: s.id, name: s.name, color: s.color }));
+    columnsCache[projectId] = columns;
+    return columns;
+  } catch {
+    return [];
+  }
+};
+
+export const updateTaskColumn = async (taskId, columnId) => {
+  const res = await fetch(`/api/teamwork/projects/api/v3/tasks/${taskId}.json`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ task: { boardColumnId: columnId } }),
+  });
+  if (!res.ok) throw new Error(`Failed to update task stage (${res.status})`);
+};
+
+export const updateTaskTags = async (taskId, tagIds) => {
+  const res = await fetch(`/api/teamwork/projects/api/v3/tasks/${taskId}.json`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ task: { tagIds } }),
+  });
+  if (!res.ok) throw new Error(`Failed to update tags (${res.status})`);
+};

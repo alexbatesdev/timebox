@@ -12,6 +12,7 @@ import { useNotifications } from "./hooks/useNotifications.js";
 import { useScheduleInit } from "./hooks/useScheduleInit.js";
 
 import { useLooseEnds } from "./hooks/useLooseEnds.js";
+import { useTeamwork } from "./hooks/useTeamwork.js";
 import LoadingScreen from "./components/LoadingScreen.jsx";
 import Header from "./components/Header.jsx";
 import CurrentBlock from "./components/CurrentBlock.jsx";
@@ -22,6 +23,7 @@ import WrapupSection from "./components/WrapupSection.jsx";
 import ExportBar from "./components/ExportBar.jsx";
 import QuickMeetingModal from "./components/QuickMeetingModal.jsx";
 import LooseEndsPanel from "./components/LooseEndsPanel.jsx";
+import TeamworkPanel from "./components/TeamworkPanel.jsx";
 
 /* ── app ──────────────────────────────────────────────────── */
 export default function App() {
@@ -45,6 +47,7 @@ export default function App() {
   const [awayAbsorbFlex, setAwayAbsorbFlex] = useState(true);
   const [awayManualMins, setAwayManualMins] = useState(15);
   const [looseEndsManualState, setLooseEndsManualState] = useState(null);
+  const [teamworkOpen, setTeamworkOpen] = useState(false);
   const [showQuickMtgModal, setShowQuickMtgModal] = useState(false);
   const [quickMtgStart, setQuickMtgStart] = useState(null);
   const [quickMtgLabel, setQuickMtgLabel] = useState("");
@@ -67,6 +70,7 @@ export default function App() {
   });
 
   const looseEnds = useLooseEnds();
+  const teamwork = useTeamwork();
   const schedules = config?.schedules || {};
 
   const initSchedule = (type) => {
@@ -501,6 +505,22 @@ export default function App() {
         transition: "padding 0.25s ease",
       }}
     >
+      {teamwork.configured && (
+        <TeamworkPanel
+          open={teamworkOpen}
+          onToggle={setTeamworkOpen}
+          tasks={teamwork.tasks}
+          projects={teamwork.projects}
+          boardColumns={teamwork.boardColumns}
+          loading={teamwork.loading}
+          selectedProjectId={teamwork.selectedProjectId}
+          onProjectChange={teamwork.setProject}
+          onToggleExpanded={teamwork.toggleExpanded}
+          onToggleDescExpanded={teamwork.toggleDescExpanded}
+          onChangeStage={teamwork.changeStage}
+          onChangeTags={teamwork.changeTags}
+        />
+      )}
       <div
         style={{
           width: "100%",
