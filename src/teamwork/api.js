@@ -30,7 +30,6 @@ const mapTask = (t, projectId, projectName) => {
     projectId: projectId || "",
     projectName: projectName || "",
     description: t.description || "",
-    tags: (t.tags || []).map((tag) => ({ id: tag.id, name: tag.name, color: tag.color })),
     hasSubtasks,
     subtasks: null,
     expanded: false,
@@ -41,7 +40,7 @@ const mapTask = (t, projectId, projectName) => {
 export const fetchMyTasks = async () => {
   const userId = await getMyUserId();
   const data = await twFetch(
-    `/projects/api/v3/tasks.json?responsiblePartyIds=${userId}&includeCompletedTasks=false&getSubTasks=false&includeRelatedTasks=true&include=projects,tasklists,tags&pageSize=250`
+    `/projects/api/v3/tasks.json?responsiblePartyIds=${userId}&includeCompletedTasks=false&getSubTasks=false&includeRelatedTasks=true&include=projects,tasklists&pageSize=250`
   );
 
   // Build project map from included data
@@ -79,11 +78,3 @@ export const fetchTaskSubtasks = async (taskId) => {
   return (data.tasks || []).map((t) => mapTask(t, "", ""));
 };
 
-export const updateTaskTags = async (taskId, tagIds) => {
-  const res = await fetch(`/api/teamwork/projects/api/v3/tasks/${taskId}.json`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ task: { tagIds } }),
-  });
-  if (!res.ok) throw new Error(`Failed to update tags (${res.status})`);
-};

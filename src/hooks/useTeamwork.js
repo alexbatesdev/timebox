@@ -3,7 +3,6 @@ import {
   isTeamworkConfigured,
   fetchMyTasks,
   fetchTaskSubtasks,
-  updateTaskTags,
 } from "../teamwork/api.js";
 
 export const useTeamwork = () => {
@@ -34,70 +33,53 @@ export const useTeamwork = () => {
     setSelectedProjectId(id || null);
   }, []);
 
-  const toggleInTree = useCallback((taskId, field) => {
-    const toggle = (tasks) =>
+  const updateInTree = useCallback((taskId, updater) => {
+    const walk = (tasks) =>
       tasks.map((t) => {
-        if (t.id === taskId) return { ...t, [field]: !t[field] };
-        if (t.subtasks?.length) return { ...t, subtasks: toggle(t.subtasks) };
+        if (t.id === taskId) return updater(t);
+        if (t.subtasks?.length) return { ...t, subtasks: walk(t.subtasks) };
         return t;
       });
-    setTasks((prev) => toggle(prev));
+    setTasks((prev) => walk(prev));
   }, []);
 
   const toggleExpanded = useCallback(
     (taskId) => {
-      const findTask = (tasks) => {
-        for (const t of tasks) {
-          if (t.id === taskId) return t;
-          if (t.subtasks?.length) {
-            const found = findTask(t.subtasks);
-            if (found) return found;
-          }
-        }
-        return null;
-      };
-
       setTasks((prev) => {
+        // Check if we need to lazy-load subtasks
+        const findTask = (tasks) => {
+          for (const t of tasks) {
+            if (t.id === taskId) return t;
+            if (t.subtasks?.length) {
+              const found = findTask(t.subtasks);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
         const task = findTask(prev);
         if (task && task.subtasks === null && !task.expanded) {
           fetchTaskSubtasks(taskId).then((subs) => {
-            const attachSubs = (tasks) =>
-              tasks.map((t) => {
-                if (t.id === taskId) return { ...t, subtasks: subs };
-                if (t.subtasks?.length) return { ...t, subtasks: attachSubs(t.subtasks) };
-                return t;
-              });
-            setTasks((p) => attachSubs(p));
+            updateInTree(taskId, (t) => ({ ...t, subtasks: subs }));
           });
         }
 
-        const toggle = (tasks) =>
+        // Toggle expanded
+        const walk = (tasks) =>
           tasks.map((t) => {
             if (t.id === taskId) return { ...t, expanded: !t.expanded };
-            if (t.subtasks?.length) return { ...t, subtasks: toggle(t.subtasks) };
+            if (t.subtasks?.length) return { ...t, subtasks: walk(t.subtasks) };
             return t;
           });
-        return toggle(prev);
+        return walk(prev);
       });
     },
-    [],
+    [updateInTree],
   );
 
   const toggleDescExpanded = useCallback(
-    (taskId) => toggleInTree(taskId, "descExpanded"),
-    [toggleInTree],
-  );
-
-  const changeTags = useCallback(
-    async (taskId, tagIds) => {
-      try {
-        await updateTaskTags(taskId, tagIds);
-        reload();
-      } catch {
-        /* silent */
-      }
-    },
-    [reload],
+    (taskId) => updateInTree(taskId, (t) => ({ ...t, descExpanded: !t.descExpanded })),
+    [updateInTree],
   );
 
   const filteredTasks = selectedProjectId
@@ -113,7 +95,6 @@ export const useTeamwork = () => {
     setProject,
     toggleExpanded,
     toggleDescExpanded,
-    changeTags,
     reload,
   };
 };

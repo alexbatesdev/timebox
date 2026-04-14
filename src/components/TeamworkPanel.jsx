@@ -4,7 +4,6 @@ const renderDescription = (text) => {
   if (!text) return null;
   const lines = text.split("\n");
   return lines.map((line, i) => {
-    // Convert markdown inline: **bold**, *italic*, [text](url)
     const parts = [];
     let remaining = line;
     let key = 0;
@@ -97,70 +96,74 @@ function DescriptionCard({ task, onToggle }) {
   );
 }
 
-function SubtaskNode({ task, depth, onToggleExpanded, onToggleDescExpanded }) {
-  const hasChildren = task.subtasks?.length > 0;
-  const hasContent = task.description || hasChildren || task.hasSubtasks;
+function TaskRow({ task, onToggle, fontSize = "12px" }) {
+  const hasContent = task.description || task.hasSubtasks || task.subtasks?.length > 0;
+  const hasKids = task.hasSubtasks || task.subtasks?.length > 0;
   return (
-    <div>
-      <div
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "6px",
+        padding: "4px 0",
+        borderBottom: "1px solid #1a1a1a",
+      }}
+    >
+      <button
+        onClick={onToggle}
         style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "6px",
-          padding: "4px 0",
-          borderBottom: "1px solid #1a1a1a",
+          background: "none",
+          border: "none",
+          color: hasKids ? "#d1d5db" : hasContent ? "#6b7280" : "#333",
+          cursor: hasContent ? "pointer" : "default",
+          fontSize: "10px",
+          padding: "0 4px",
+          flexShrink: 0,
+          width: "16px",
+          textAlign: "center",
         }}
       >
-        <button
-          onClick={() => onToggleExpanded(task.id)}
-          style={{
-            background: "none",
-            border: "none",
-            color:
-              hasChildren || task.hasSubtasks
-                ? "#d1d5db"
-                : hasContent
-                  ? "#6b7280"
-                  : "#333",
-            cursor: hasContent ? "pointer" : "default",
-            fontSize: "10px",
-            padding: "0 4px",
-            flexShrink: 0,
-            width: "16px",
-            textAlign: "center",
-          }}
-        >
-          {task.expanded ? "▼" : hasContent ? "▶" : "◦"}
-        </button>
-        <span
-          style={{
-            flex: 1,
-            fontSize: "12px",
-            color: "#d1d5db",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            textAlign: "left",
-          }}
-          title={task.name}
-        >
-          {task.name}
-        </span>
-        <a
-          href={taskUrl(task.id)}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            color: "#a855f7",
-            fontSize: "12px",
-            textDecoration: "none",
-            flexShrink: 0,
-          }}
-          title="Open in Teamwork"
-        >
-          ↗
-        </a>
-      </div>
+        {task.expanded ? "▼" : hasContent ? "▶" : "◦"}
+      </button>
+      <span
+        style={{
+          flex: 1,
+          fontSize,
+          color: "#d1d5db",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          textAlign: "left",
+        }}
+        title={task.name}
+      >
+        {task.name}
+      </span>
+      <a
+        href={taskUrl(task.id)}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          color: "#a855f7",
+          fontSize,
+          textDecoration: "none",
+          flexShrink: 0,
+        }}
+        title="Open in Teamwork"
+      >
+        ↗
+      </a>
+    </div>
+  );
+}
+
+function TaskNode({ task, onToggleExpanded, onToggleDescExpanded }) {
+  return (
+    <div>
+      <TaskRow
+        task={task}
+        onToggle={() => onToggleExpanded(task.id)}
+      />
       {task.expanded && (
         <div style={{ paddingLeft: 16 }}>
           <DescriptionCard task={task} onToggle={onToggleDescExpanded} />
@@ -177,10 +180,9 @@ function SubtaskNode({ task, depth, onToggleExpanded, onToggleDescExpanded }) {
             </div>
           )}
           {task.subtasks?.map((sub) => (
-            <SubtaskNode
+            <TaskNode
               key={sub.id}
               task={sub}
-              depth={depth + 1}
               onToggleExpanded={onToggleExpanded}
               onToggleDescExpanded={onToggleDescExpanded}
             />
@@ -357,121 +359,12 @@ export default function TeamworkPanel({
             </div>
           )}
           {tasks.map((task) => (
-            <div key={task.id}>
-              {/* Task row */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  padding: "8px 16px",
-                  borderBottom: "1px solid #1f1f1f",
-                }}
-              >
-                <button
-                  onClick={() => onToggleExpanded(task.id)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: task.hasSubtasks ? "#d1d5db" : "#6b7280",
-                    cursor: "pointer",
-                    fontSize: "11px",
-                    padding: "0 4px",
-                    flexShrink: 0,
-                    width: "20px",
-                    textAlign: "center",
-                  }}
-                >
-                  {task.expanded ? "▼" : "▶"}
-                </button>
-                <span
-                  style={{
-                    flex: 1,
-                    fontSize: "13px",
-                    color: "#d1d5db",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    textAlign: "left",
-                  }}
-                  title={task.name}
-                >
-                  {task.name}
-                </span>
-                <a
-                  href={taskUrl(task.id)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    color: "#a855f7",
-                    fontSize: "13px",
-                    textDecoration: "none",
-                    flexShrink: 0,
-                  }}
-                  title="Open in Teamwork"
-                >
-                  ↗
-                </a>
-              </div>
-
-              {/* Expanded details */}
-              {task.expanded && (
-                <div
-                  style={{
-                    padding: "8px 16px 8px 46px",
-                    borderBottom: "1px solid #1f1f1f",
-                    fontSize: "12px",
-                    color: "#9ca3af",
-                  }}
-                >
-                  <DescriptionCard
-                    task={task}
-                    onToggle={onToggleDescExpanded}
-                  />
-
-                  {/* Tags */}
-                  {task.tags.length > 0 && (
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: "4px",
-                        flexWrap: "wrap",
-                        marginBottom: "8px",
-                      }}
-                    >
-                      {task.tags.map((tag) => (
-                        <span
-                          key={tag.id}
-                          style={{
-                            fontSize: "10px",
-                            padding: "1px 6px",
-                            borderRadius: "4px",
-                            background: tag.color || "#333",
-                            color: "#fff",
-                          }}
-                        >
-                          {tag.name}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Subtasks */}
-                  {task.subtasks && task.subtasks.length > 0 && (
-                    <div>
-                      {task.subtasks.map((sub) => (
-                        <SubtaskNode
-                          key={sub.id}
-                          task={sub}
-                          depth={0}
-                          onToggleExpanded={onToggleExpanded}
-                          onToggleDescExpanded={onToggleDescExpanded}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+            <div key={task.id} style={{ padding: "0 16px" }}>
+              <TaskNode
+                task={task}
+                onToggleExpanded={onToggleExpanded}
+                onToggleDescExpanded={onToggleDescExpanded}
+              />
             </div>
           ))}
         </div>
