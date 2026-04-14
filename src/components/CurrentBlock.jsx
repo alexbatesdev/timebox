@@ -122,26 +122,34 @@ export default function CurrentBlock({
             >
               Yesterday's wrap-up
             </div>
-            {yesterdayWrapup.left && (
-              <div style={{ marginBottom: "6px" }}>
-                <div style={{ color: "#6b7280", fontSize: "11px" }}>
-                  Where I left off
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "row",
+                justifyContent: "space-around",
+              }}
+            >
+              {yesterdayWrapup.left && (
+                <div style={{ marginBottom: "6px" }}>
+                  <div style={{ color: "#6b7280", fontSize: "11px" }}>
+                    Where I left off
+                  </div>
+                  <div style={{ color: "#9ca3af", whiteSpace: "pre-wrap" }}>
+                    {yesterdayWrapup.left}
+                  </div>
                 </div>
-                <div style={{ color: "#9ca3af", whiteSpace: "pre-wrap" }}>
-                  {yesterdayWrapup.left}
+              )}
+              {yesterdayWrapup.next && (
+                <div>
+                  <div style={{ color: "#6b7280", fontSize: "11px" }}>
+                    What's next
+                  </div>
+                  <div style={{ color: "#9ca3af", whiteSpace: "pre-wrap" }}>
+                    {yesterdayWrapup.next}
+                  </div>
                 </div>
-              </div>
-            )}
-            {yesterdayWrapup.next && (
-              <div>
-                <div style={{ color: "#6b7280", fontSize: "11px" }}>
-                  What's next
-                </div>
-                <div style={{ color: "#9ca3af", whiteSpace: "pre-wrap" }}>
-                  {yesterdayWrapup.next}
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
 
