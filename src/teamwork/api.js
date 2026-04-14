@@ -21,7 +21,7 @@ const getMyUserId = async () => {
   return String(id);
 };
 
-const mapTask = (t, projectId, projectName) => {
+const mapTask = (t, projectId, projectName, stage = null, workflowId = null) => {
   const hasSubtasks = Array.isArray(t.subTaskIds) && t.subTaskIds.length > 0;
   return {
     id: t.id,
@@ -30,11 +30,41 @@ const mapTask = (t, projectId, projectName) => {
     projectId: projectId || "",
     projectName: projectName || "",
     description: t.description || "",
+    stage,
+    workflowId,
     hasSubtasks,
     subtasks: null,
     expanded: false,
     descExpanded: !hasSubtasks,
   };
+};
+
+// Cache workflow stages keyed by workflowId
+const stagesCache = {};
+export const fetchWorkflowStages = async (workflowId) => {
+  if (!workflowId) return [];
+  if (stagesCache[workflowId]) return stagesCache[workflowId];
+  const data = await twFetch(`/projects/api/v3/workflows/${workflowId}/stages.json`);
+  const stages = (data.stages || []).map((s) => ({ id: String(s.id), name: s.name, color: s.color }));
+  stagesCache[workflowId] = stages;
+  return stages;
+};
+
+// Resolve stages for tasks that have workflowStages data
+const resolveTaskStages = async (rawTasks) => {
+  const workflowIds = [...new Set(
+    rawTasks.map((t) => t.workflowStages?.[0]?.workflowId).filter(Boolean)
+  )];
+  const stagesByWorkflow = {};
+  await Promise.all(workflowIds.map(async (wfId) => {
+    stagesByWorkflow[wfId] = await fetchWorkflowStages(wfId);
+  }));
+
+  const lookup = {};
+  for (const [wfId, stages] of Object.entries(stagesByWorkflow)) {
+    for (const s of stages) lookup[`${wfId}:${s.id}`] = s;
+  }
+  return lookup;
 };
 
 export const fetchMyTasks = async () => {
@@ -58,13 +88,17 @@ export const fetchMyTasks = async () => {
     if (projId) tasklistToProject[id] = projId;
   }
 
-  const tasks = (data.tasks || [])
-    .filter((t) => !t.parentTaskId && !t.parentTask?.id)
-    .map((t) => {
-      const tasklistId = String(t.tasklist?.id || t.tasklistId || "");
-      const projectId = tasklistToProject[tasklistId] || "";
-      return { ...mapTask(t, projectId, projectMap[projectId]?.name || ""), descExpanded: true };
-    });
+  const rootTasks = (data.tasks || []).filter((t) => !t.parentTaskId && !t.parentTask?.id);
+  const stageLookup = await resolveTaskStages(rootTasks);
+
+  const tasks = rootTasks.map((t) => {
+    const tasklistId = String(t.tasklist?.id || t.tasklistId || "");
+    const projectId = tasklistToProject[tasklistId] || "";
+    const ws = t.workflowStages?.[0];
+    const wfId = ws?.workflowId ? String(ws.workflowId) : null;
+    const stage = ws?.stageId ? stageLookup[`${ws.workflowId}:${ws.stageId}`] || null : null;
+    return { ...mapTask(t, projectId, projectMap[projectId]?.name || "", stage, wfId), descExpanded: true };
+  });
 
   const projects = Object.values(projectMap).sort((a, b) => a.name.localeCompare(b.name));
 
@@ -75,6 +109,25 @@ export const fetchTaskSubtasks = async (taskId) => {
   const data = await twFetch(
     `/projects/api/v3/tasks/${taskId}/subtasks.json?includeCompletedTasks=false&includeRelatedTasks=true&pageSize=250`
   );
-  return (data.tasks || []).map((t) => mapTask(t, "", ""));
+  const subtasks = data.tasks || [];
+  const stageLookup = await resolveTaskStages(subtasks);
+
+  return subtasks.map((t) => {
+    const ws = t.workflowStages?.[0];
+    const wfId = ws?.workflowId ? String(ws.workflowId) : null;
+    const stage = ws?.stageId ? stageLookup[`${ws.workflowId}:${ws.stageId}`] || null : null;
+    return mapTask(t, "", "", stage, wfId);
+  });
 };
 
+export const moveTaskToStage = async (workflowId, stageId, taskId) => {
+  const res = await fetch(
+    `/api/teamwork/projects/api/v3/workflows/${workflowId}/stages/${stageId}/tasks.json`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ taskIds: [taskId] }),
+    }
+  );
+  if (!res.ok) throw new Error(`Failed to move task to stage (${res.status})`);
+};

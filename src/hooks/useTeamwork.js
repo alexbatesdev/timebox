@@ -3,6 +3,8 @@ import {
   isTeamworkConfigured,
   fetchMyTasks,
   fetchTaskSubtasks,
+  fetchWorkflowStages,
+  moveTaskToStage,
 } from "../teamwork/api.js";
 
 export const useTeamwork = () => {
@@ -11,6 +13,7 @@ export const useTeamwork = () => {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState(null);
+  const [workflowData, setWorkflowData] = useState({});
 
   const reload = useCallback(async () => {
     if (!configured) return;
@@ -60,7 +63,14 @@ export const useTeamwork = () => {
         const task = findTask(prev);
         if (task && task.subtasks === null && !task.expanded) {
           fetchTaskSubtasks(taskId).then((subs) => {
-            updateInTree(taskId, (t) => ({ ...t, subtasks: subs }));
+            updateInTree(taskId, (t) => ({
+              ...t,
+              subtasks: subs.map((s) => ({
+                ...s,
+                projectId: s.projectId || t.projectId,
+                projectName: s.projectName || t.projectName,
+              })),
+            }));
           });
         }
 
@@ -82,6 +92,37 @@ export const useTeamwork = () => {
     [updateInTree],
   );
 
+  const loadWorkflowStages = useCallback(
+    (workflowId) => {
+      if (!workflowId) return;
+      setWorkflowData((prev) => {
+        if (prev[workflowId]) return prev;
+        fetchWorkflowStages(workflowId).then((stages) => {
+          setWorkflowData((p) => ({ ...p, [workflowId]: { stages } }));
+        }).catch(() => {
+          setWorkflowData((p) => ({ ...p, [workflowId]: { stages: [] } }));
+        });
+        return { ...prev, [workflowId]: { stages: [], loading: true } };
+      });
+    },
+    [],
+  );
+
+  const changeStage = useCallback(
+    async (taskId, workflowId, stageId) => {
+      const wd = workflowData[workflowId];
+      if (!wd) return;
+      const newStage = wd.stages.find((s) => String(s.id) === String(stageId)) || null;
+      updateInTree(taskId, (t) => ({ ...t, stage: newStage }));
+      try {
+        await moveTaskToStage(workflowId, stageId, taskId);
+      } catch {
+        reload();
+      }
+    },
+    [workflowData, updateInTree, reload],
+  );
+
   const filteredTasks = selectedProjectId
     ? tasks.filter((t) => String(t.projectId) === String(selectedProjectId))
     : tasks;
@@ -92,9 +133,12 @@ export const useTeamwork = () => {
     projects,
     loading,
     selectedProjectId,
+    workflowData,
     setProject,
     toggleExpanded,
     toggleDescExpanded,
+    loadWorkflowStages,
+    changeStage,
     reload,
   };
 };

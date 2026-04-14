@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { taskUrl } from "../teamwork/api.js";
 
 const renderDescription = (text) => {
@@ -96,8 +97,115 @@ function DescriptionCard({ task, onToggle }) {
   );
 }
 
-function TaskRow({ task, onToggle, fontSize = "12px" }) {
-  const hasContent = task.description || task.hasSubtasks || task.subtasks?.length > 0;
+const isLightColor = (hex) => {
+  if (!hex) return false;
+  const c = hex.replace("#", "");
+  const r = parseInt(c.substring(0, 2), 16);
+  const g = parseInt(c.substring(2, 4), 16);
+  const b = parseInt(c.substring(4, 6), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 > 150;
+};
+
+function StageMenu({ task, stages, onSelect, onClose }) {
+  if (!stages.length) {
+    return (
+      <div
+        style={{
+          position: "absolute",
+          right: 0,
+          top: "100%",
+          marginTop: "4px",
+          background: "#1a1a1a",
+          border: "1px solid #333",
+          borderRadius: "6px",
+          padding: "8px 12px",
+          zIndex: 100,
+          fontSize: "11px",
+          color: "#6b7280",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
+          whiteSpace: "nowrap",
+        }}
+      >
+        Loading…
+      </div>
+    );
+  }
+  return (
+    <div
+      style={{
+        position: "absolute",
+        right: 0,
+        top: "100%",
+        marginTop: "4px",
+        background: "#1a1a1a",
+        border: "1px solid #333",
+        borderRadius: "6px",
+        padding: "4px 0",
+        zIndex: 100,
+        minWidth: "140px",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
+      }}
+    >
+      {stages.map((stage) => (
+        <button
+          key={stage.id}
+          onClick={() => {
+            onSelect(stage.id);
+            onClose();
+          }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            width: "100%",
+            padding: "6px 10px",
+            background:
+              String(task.stage?.id) === String(stage.id) ? "#252525" : "none",
+            border: "none",
+            color: "#d1d5db",
+            fontSize: "11px",
+            cursor: "pointer",
+            textAlign: "left",
+            fontFamily: "inherit",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "#252525";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background =
+              String(task.stage?.id) === String(stage.id)
+                ? "#252525"
+                : "transparent";
+          }}
+        >
+          <span
+            style={{
+              width: "8px",
+              height: "8px",
+              borderRadius: "50%",
+              background: stage.color || "#555",
+              flexShrink: 0,
+            }}
+          />
+          {stage.name}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function TaskRow({
+  task,
+  onToggle,
+  fontSize = "12px",
+  menuTaskId,
+  onBadgeClick,
+  stages,
+  onSelectStage,
+  onCloseMenu,
+}) {
+  const hasContent =
+    task.description || task.hasSubtasks || task.subtasks?.length > 0;
   const hasKids = task.hasSubtasks || task.subtasks?.length > 0;
   return (
     <div
@@ -139,6 +247,41 @@ function TaskRow({ task, onToggle, fontSize = "12px" }) {
       >
         {task.name}
       </span>
+      {task.workflowId && (
+        <div style={{ position: "relative", flexShrink: 0 }}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onBadgeClick(task);
+            }}
+            style={{
+              fontSize: "9px",
+              padding: "1px 6px",
+              borderRadius: "9999px",
+              background: task.stage?.color || "#333",
+              color: isLightColor(task.stage?.color) ? "#1a1a1a" : "#fff",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+              border: task.stage ? "none" : "1px solid #555",
+              cursor: "pointer",
+              fontFamily: "inherit",
+              fontWeight: "600",
+            }}
+          >
+            {task.stage?.name || "—"}
+          </button>
+          {menuTaskId === task.id && (
+            <StageMenu
+              task={task}
+              stages={stages}
+              onSelect={(stageId) =>
+                onSelectStage(task.id, task.workflowId, stageId)
+              }
+              onClose={onCloseMenu}
+            />
+          )}
+        </div>
+      )}
       <a
         href={taskUrl(task.id)}
         target="_blank"
@@ -157,12 +300,26 @@ function TaskRow({ task, onToggle, fontSize = "12px" }) {
   );
 }
 
-function TaskNode({ task, onToggleExpanded, onToggleDescExpanded }) {
+function TaskNode({
+  task,
+  onToggleExpanded,
+  onToggleDescExpanded,
+  menuTaskId,
+  onBadgeClick,
+  stages,
+  onSelectStage,
+  onCloseMenu,
+}) {
   return (
     <div>
       <TaskRow
         task={task}
         onToggle={() => onToggleExpanded(task.id)}
+        menuTaskId={menuTaskId}
+        onBadgeClick={onBadgeClick}
+        stages={stages}
+        onSelectStage={onSelectStage}
+        onCloseMenu={onCloseMenu}
       />
       {task.expanded && (
         <div style={{ paddingLeft: 16 }}>
@@ -185,6 +342,11 @@ function TaskNode({ task, onToggleExpanded, onToggleDescExpanded }) {
               task={sub}
               onToggleExpanded={onToggleExpanded}
               onToggleDescExpanded={onToggleDescExpanded}
+              menuTaskId={menuTaskId}
+              onBadgeClick={onBadgeClick}
+              stages={stages}
+              onSelectStage={onSelectStage}
+              onCloseMenu={onCloseMenu}
             />
           ))}
         </div>
@@ -200,10 +362,34 @@ export default function TeamworkPanel({
   projects,
   loading,
   selectedProjectId,
+  workflowData,
   onProjectChange,
   onToggleExpanded,
   onToggleDescExpanded,
+  onLoadWorkflowStages,
+  onChangeStage,
 }) {
+  const [menuTaskId, setMenuTaskId] = useState(null);
+  const findTask = (list) => {
+    for (const t of list) {
+      if (t.id === menuTaskId) return t;
+      if (t.subtasks?.length) {
+        const f = findTask(t.subtasks);
+        if (f) return f;
+      }
+    }
+    return null;
+  };
+  const menuTask = menuTaskId ? findTask(tasks) : null;
+  const stages = menuTask
+    ? workflowData[menuTask.workflowId]?.stages || []
+    : [];
+
+  const handleBadgeClick = (task) => {
+    setMenuTaskId(task.id);
+    onLoadWorkflowStages(task.workflowId);
+  };
+
   return (
     <div
       style={{
@@ -358,12 +544,23 @@ export default function TeamworkPanel({
               No tasks
             </div>
           )}
+          {menuTaskId && (
+            <div
+              onClick={() => setMenuTaskId(null)}
+              style={{ position: "fixed", inset: 0, zIndex: 99 }}
+            />
+          )}
           {tasks.map((task) => (
             <div key={task.id} style={{ padding: "0 16px" }}>
               <TaskNode
                 task={task}
                 onToggleExpanded={onToggleExpanded}
                 onToggleDescExpanded={onToggleDescExpanded}
+                menuTaskId={menuTaskId}
+                onBadgeClick={handleBadgeClick}
+                stages={stages}
+                onSelectStage={onChangeStage}
+                onCloseMenu={() => setMenuTaskId(null)}
               />
             </div>
           ))}
