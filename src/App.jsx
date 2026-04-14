@@ -453,6 +453,12 @@ export default function App() {
 
   const handleLooseEndsToggle = (open) => {
     setLooseEndsManualState(open);
+    if (open && window.innerWidth < 1600) setTeamworkOpen(false);
+  };
+
+  const handleTeamworkToggle = (open) => {
+    setTeamworkOpen(open);
+    if (open && window.innerWidth < 1600) setLooseEndsManualState(false);
   };
 
   /* ── render ────────────────────────────────────────── */
@@ -508,7 +514,7 @@ export default function App() {
       {teamwork.configured && (
         <TeamworkPanel
           open={teamworkOpen}
-          onToggle={setTeamworkOpen}
+          onToggle={handleTeamworkToggle}
           tasks={teamwork.tasks}
           projects={teamwork.projects}
           loading={teamwork.loading}
