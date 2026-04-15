@@ -8,34 +8,24 @@ import {
   classifyTier,
 } from "../github/api.js";
 
+const POLL_INTERVAL = 60_000;
+
 export const useGitHubNotifications = () => {
   const configured = isGitHubConfigured();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
-  const lastModifiedRef = useRef(null);
-  const pollIntervalRef = useRef(60);
   const pollTimeoutRef = useRef(null);
 
-  const doFetch = useCallback(
-    async (force = false) => {
-      if (!configured) return;
-      try {
-        const result = await fetchNotifications(force ? null : lastModifiedRef.current);
-        if (result.lastModified) lastModifiedRef.current = result.lastModified;
-        if (result.pollInterval) pollIntervalRef.current = result.pollInterval;
-        if (result.notifications) setNotifications(result.notifications);
-      } catch {
-        /* silent */
-      }
-    },
-    [configured],
-  );
+  const doFetch = useCallback(async () => {
+    if (!configured) return;
+    const data = await fetchNotifications();
+    setNotifications(data);
+  }, [configured]);
 
   const reload = useCallback(async () => {
     if (!configured) return;
     setLoading(true);
-    lastModifiedRef.current = null;
-    await doFetch(true);
+    await doFetch();
     setLoading(false);
   }, [configured, doFetch]);
 
@@ -49,9 +39,13 @@ export const useGitHubNotifications = () => {
     if (!configured) return;
     const schedulePoll = () => {
       pollTimeoutRef.current = setTimeout(async () => {
-        await doFetch();
+        try {
+          await doFetch();
+        } catch (err) {
+          console.error("GitHub poll error:", err);
+        }
         schedulePoll();
-      }, pollIntervalRef.current * 1000);
+      }, POLL_INTERVAL);
     };
     schedulePoll();
     return () => clearTimeout(pollTimeoutRef.current);

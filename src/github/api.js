@@ -3,31 +3,13 @@ export const isGitHubConfigured = () => Boolean(token());
 
 const ghFetch = async (path, options = {}) => {
   const res = await fetch(`/api/github${path}`, options);
-  if (res.status === 304) {
-    return {
-      data: null,
-      lastModified: res.headers.get("Last-Modified"),
-      pollInterval: parseInt(res.headers.get("X-Poll-Interval") || "60", 10),
-    };
-  }
   if (!res.ok) throw new Error(`GitHub API error (${res.status})`);
-  const data = await res.json();
-  return {
-    data,
-    lastModified: res.headers.get("Last-Modified"),
-    pollInterval: parseInt(res.headers.get("X-Poll-Interval") || "60", 10),
-  };
+  return res.json();
 };
 
-export const fetchNotifications = async (lastModified) => {
-  const headers = {};
-  if (lastModified) headers["If-Modified-Since"] = lastModified;
-  const result = await ghFetch("/notifications?participating=true", { headers });
-  return {
-    notifications: result.data,
-    lastModified: result.lastModified,
-    pollInterval: result.pollInterval,
-  };
+export const fetchNotifications = async () => {
+  const data = await ghFetch("/notifications?participating=true&all=true");
+  return Array.isArray(data) ? data : [];
 };
 
 export const markThreadRead = async (threadId) => {
