@@ -99,6 +99,10 @@ export const useGitHubNotifications = () => {
       else if (tier === "updates") updates.push(n);
       else noise.push(n);
     }
+    const byRecent = (a, b) => new Date(b.updated_at) - new Date(a.updated_at);
+    newStuff.sort(byRecent);
+    updates.sort(byRecent);
+    noise.sort(byRecent);
     return { newStuff, updates, noise };
   }, [notifications]);
 
