@@ -13,6 +13,7 @@ import { useScheduleInit } from "./hooks/useScheduleInit.js";
 
 import { useLooseEnds } from "./hooks/useLooseEnds.js";
 import { useTeamwork } from "./hooks/useTeamwork.js";
+import { useGitHubNotifications } from "./hooks/useGitHubNotifications.js";
 import LoadingScreen from "./components/LoadingScreen.jsx";
 import Header from "./components/Header.jsx";
 import CurrentBlock from "./components/CurrentBlock.jsx";
@@ -24,6 +25,7 @@ import ExportBar from "./components/ExportBar.jsx";
 import QuickMeetingModal from "./components/QuickMeetingModal.jsx";
 import LooseEndsPanel from "./components/LooseEndsPanel.jsx";
 import TeamworkPanel from "./components/TeamworkPanel.jsx";
+import GitHubPanel from "./components/GitHubPanel.jsx";
 
 /* ── app ──────────────────────────────────────────────────── */
 export default function App() {
@@ -48,6 +50,7 @@ export default function App() {
   const [awayManualMins, setAwayManualMins] = useState(15);
   const [looseEndsManualState, setLooseEndsManualState] = useState(null);
   const [teamworkOpen, setTeamworkOpen] = useState(false);
+  const [githubOpen, setGithubOpen] = useState(false);
   const [showQuickMtgModal, setShowQuickMtgModal] = useState(false);
   const [quickMtgStart, setQuickMtgStart] = useState(null);
   const [quickMtgLabel, setQuickMtgLabel] = useState("");
@@ -71,6 +74,7 @@ export default function App() {
 
   const looseEnds = useLooseEnds();
   const teamwork = useTeamwork();
+  const github = useGitHubNotifications();
   const schedules = config?.schedules || {};
 
   const initSchedule = (type) => {
@@ -110,9 +114,11 @@ export default function App() {
   const loadedDateKey = useRef(todayKey());
   const reloadTeamwork = teamwork.reload;
   const reloadLooseEnds = looseEnds.reload;
+  const reloadGitHub = github.reload;
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
+      reloadGitHub();
       if (todayKey() !== loadedDateKey.current) {
         loadedDateKey.current = todayKey();
         reloadScheduleFromConfig();
@@ -122,7 +128,7 @@ export default function App() {
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [reloadScheduleFromConfig, reloadTeamwork, reloadLooseEnds]);
+  }, [reloadScheduleFromConfig, reloadTeamwork, reloadLooseEnds, reloadGitHub]);
 
   const getCurIdx = () => {
     let idx = 0;
@@ -469,14 +475,50 @@ export default function App() {
     setLooseEndsManualState(null);
   }, [curBlockKey]);
 
+  const countOpenPanels = (overrides = {}) => {
+    const tw = overrides.teamwork ?? teamworkOpen;
+    const gh = overrides.github ?? githubOpen;
+    const le = overrides.looseEnds ?? looseEndsOpen;
+    return (tw ? 1 : 0) + (gh ? 1 : 0) + (le ? 1 : 0);
+  };
+
   const handleLooseEndsToggle = (open) => {
     setLooseEndsManualState(open);
-    if (open && window.innerWidth < 1600) setTeamworkOpen(false);
+    if (open) {
+      const w = window.innerWidth;
+      if (w < 1600) {
+        setTeamworkOpen(false);
+        setGithubOpen(false);
+      } else if (w < 2080 && countOpenPanels({ looseEnds: true }) > 2) {
+        setGithubOpen(false);
+      }
+    }
   };
 
   const handleTeamworkToggle = (open) => {
     setTeamworkOpen(open);
-    if (open && window.innerWidth < 1600) setLooseEndsManualState(false);
+    if (open) {
+      const w = window.innerWidth;
+      if (w < 1600) {
+        setLooseEndsManualState(false);
+        setGithubOpen(false);
+      } else if (w < 2080 && countOpenPanels({ teamwork: true }) > 2) {
+        setGithubOpen(false);
+      }
+    }
+  };
+
+  const handleGitHubToggle = (open) => {
+    setGithubOpen(open);
+    if (open) {
+      const w = window.innerWidth;
+      if (w < 1600) {
+        setTeamworkOpen(false);
+        setLooseEndsManualState(false);
+      } else if (w < 2080 && countOpenPanels({ github: true }) > 2) {
+        setTeamworkOpen(false);
+      }
+    }
   };
 
   /* ── render ────────────────────────────────────────── */
@@ -529,21 +571,53 @@ export default function App() {
         transition: "padding 0.25s ease",
       }}
     >
-      {teamwork.configured && (
-        <TeamworkPanel
-          open={teamworkOpen}
-          onToggle={handleTeamworkToggle}
-          tasks={teamwork.tasks}
-          projects={teamwork.projects}
-          loading={teamwork.loading}
-          selectedProjectId={teamwork.selectedProjectId}
-          workflowData={teamwork.workflowData}
-          onProjectChange={teamwork.setProject}
-          onToggleExpanded={teamwork.toggleExpanded}
-          onToggleDescExpanded={teamwork.toggleDescExpanded}
-          onLoadWorkflowStages={teamwork.loadWorkflowStages}
-          onChangeStage={teamwork.changeStage}
-        />
+      {/* Left panels wrapper */}
+      {(teamwork.configured || github.configured) && (
+        <div
+          style={{
+            width:
+              teamworkOpen && githubOpen
+                ? "calc(900px + 32px)"
+                : teamworkOpen || githubOpen
+                  ? "calc(450px + 32px)"
+                  : "32px",
+            flexShrink: 0,
+            transition: "width 0.25s ease",
+            position: "relative",
+            alignSelf: "stretch",
+            zIndex: 1,
+          }}
+        >
+          {teamwork.configured && (
+            <TeamworkPanel
+              open={teamworkOpen}
+              onToggle={handleTeamworkToggle}
+              tasks={teamwork.tasks}
+              projects={teamwork.projects}
+              loading={teamwork.loading}
+              selectedProjectId={teamwork.selectedProjectId}
+              workflowData={teamwork.workflowData}
+              onProjectChange={teamwork.setProject}
+              onToggleExpanded={teamwork.toggleExpanded}
+              onToggleDescExpanded={teamwork.toggleDescExpanded}
+              onLoadWorkflowStages={teamwork.loadWorkflowStages}
+              onChangeStage={teamwork.changeStage}
+              panelLeft={githubOpen ? 480 : 30}
+            />
+          )}
+          {github.configured && (
+            <GitHubPanel
+              open={githubOpen}
+              onToggle={handleGitHubToggle}
+              grouped={github.grouped}
+              unreadCount={github.unreadCount}
+              loading={github.loading}
+              onMarkRead={github.markRead}
+              onMarkDone={github.markDone}
+              onFetchComment={github.fetchCommentBody}
+            />
+          )}
+        </div>
       )}
       <div
         style={{

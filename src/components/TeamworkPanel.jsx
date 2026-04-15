@@ -368,6 +368,7 @@ export default function TeamworkPanel({
   onToggleDescExpanded,
   onLoadWorkflowStages,
   onChangeStage,
+  panelLeft = 30,
 }) {
   const [menuTaskId, setMenuTaskId] = useState(null);
   const findTask = (list) => {
@@ -391,16 +392,7 @@ export default function TeamworkPanel({
   };
 
   return (
-    <div
-      style={{
-        width: open ? "calc(450px + 32px)" : "32px",
-        flexShrink: 0,
-        transition: "width 0.25s ease",
-        position: "relative",
-        alignSelf: "stretch",
-        zIndex: 1,
-      }}
-    >
+    <>
       {/* Tab */}
       <button
         onClick={() => onToggle(!open)}
@@ -437,7 +429,7 @@ export default function TeamworkPanel({
       <div
         style={{
           position: "absolute",
-          left: open ? "30px" : "32px",
+          left: open ? `${panelLeft}px` : "32px",
           top: "16px",
           bottom: "16px",
           width: "450px",
@@ -566,6 +558,6 @@ export default function TeamworkPanel({
           ))}
         </div>
       </div>
-    </div>
+    </>
   );
 }

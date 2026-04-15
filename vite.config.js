@@ -21,6 +21,15 @@ export default defineConfig(({ mode }) => {
             Authorization: `Basic ${Buffer.from(env.VITE_TEAMWORK_API_KEY + ':X').toString('base64')}`
           } : {}
         },
+        '/api/github': {
+          target: 'https://api.github.com',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/github/, ''),
+          headers: env.VITE_GITHUB_TOKEN ? {
+            Authorization: `Bearer ${env.VITE_GITHUB_TOKEN}`,
+            Accept: 'application/vnd.github+json',
+          } : {}
+        },
       },
     },
   }
