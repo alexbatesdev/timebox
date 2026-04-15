@@ -4,7 +4,6 @@ import {
   fetchNotifications,
   markThreadRead,
   markThreadDone,
-  fetchComment,
   classifyTier,
 } from "../github/api.js";
 
@@ -90,31 +89,10 @@ export const useGitHubNotifications = () => {
     [reload],
   );
 
-  const fetchCommentBody = useCallback(async (threadId) => {
-    setNotifications((prev) =>
-      prev.map((n) =>
-        n.id === threadId ? { ...n, commentLoading: true } : n,
-      ),
-    );
-    try {
-      const notification = notifications.find((n) => n.id === threadId);
-      const body = await fetchComment(notification?.subject?.latest_comment_url);
-      setNotifications((prev) =>
-        prev.map((n) =>
-          n.id === threadId ? { ...n, commentBody: body, commentLoading: false } : n,
-        ),
-      );
-    } catch {
-      setNotifications((prev) =>
-        prev.map((n) =>
-          n.id === threadId ? { ...n, commentLoading: false } : n,
-        ),
-      );
-    }
-  }, [notifications]);
-
   const grouped = useMemo(() => {
-    const newStuff = [], updates = [], noise = [];
+    const newStuff = [],
+      updates = [],
+      noise = [];
     for (const n of notifications) {
       const tier = classifyTier(n.reason);
       if (tier === "new") newStuff.push(n);
@@ -138,6 +116,5 @@ export const useGitHubNotifications = () => {
     reload,
     markRead,
     markDone,
-    fetchCommentBody,
   };
 };

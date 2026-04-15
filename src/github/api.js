@@ -2,7 +2,10 @@ const token = () => import.meta.env.VITE_GITHUB_TOKEN;
 export const isGitHubConfigured = () => Boolean(token());
 
 const ghFetch = async (path, options = {}) => {
-  const res = await fetch(`/api/github${path}`, { cache: "no-store", ...options });
+  const res = await fetch(`/api/github${path}`, {
+    cache: "no-store",
+    ...options,
+  });
   if (!res.ok) throw new Error(`GitHub API error (${res.status})`);
   return res.json();
 };
@@ -23,14 +26,8 @@ export const markThreadDone = async (threadId) => {
   const res = await fetch(`/api/github/notifications/threads/${threadId}`, {
     method: "DELETE",
   });
-  if (!res.ok && res.status !== 205) throw new Error(`Failed to mark thread done (${res.status})`);
-};
-
-export const fetchComment = async (apiUrl) => {
-  if (!apiUrl) return null;
-  const path = apiUrl.replace("https://api.github.com", "");
-  const { data } = await ghFetch(path);
-  return data?.body || null;
+  if (!res.ok && res.status !== 205)
+    throw new Error(`Failed to mark thread done (${res.status})`);
 };
 
 export const notificationUrl = (notification) => {
@@ -43,7 +40,13 @@ export const notificationUrl = (notification) => {
 };
 
 const NEW_STUFF = new Set(["review_requested", "assign"]);
-const UPDATES = new Set(["mention", "team_mention", "comment", "author", "state_change"]);
+const UPDATES = new Set([
+  "mention",
+  "team_mention",
+  "comment",
+  "author",
+  "state_change",
+]);
 
 export const classifyTier = (reason) => {
   if (NEW_STUFF.has(reason)) return "new";

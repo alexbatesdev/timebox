@@ -57,42 +57,13 @@ function reasonColor(reason) {
   return colors[reason] || "#4b5563";
 }
 
-function NotificationItem({
-  n,
-  onMarkRead,
-  expandedId,
-  onToggleExpand,
-  confirmDeleteId,
-  onConfirmDelete,
-}) {
+function NotificationItem({ n, onMarkRead, confirmDeleteId, onConfirmDelete }) {
   const url = notificationUrl(n);
-  const isExpanded = expandedId === n.id;
-  const hasMentionComment =
-    n.reason === "mention" || n.reason === "team_mention";
 
   return (
     <div style={{ borderBottom: "1px solid #1a1a1a", padding: "6px 0" }}>
       {/* Row 1: title */}
       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-        {hasMentionComment ? (
-          <button
-            onClick={() => onToggleExpand(n.id)}
-            style={{
-              background: "none",
-              border: "none",
-              color: "#6b7280",
-              cursor: "pointer",
-              fontSize: "10px",
-              padding: "0 2px",
-              flexShrink: 0,
-              width: "14px",
-            }}
-          >
-            {isExpanded ? "▼" : "▶"}
-          </button>
-        ) : (
-          <span style={{ width: "14px", flexShrink: 0 }} />
-        )}
         <a
           href={url || "#"}
           target="_blank"
@@ -120,7 +91,6 @@ function NotificationItem({
           display: "flex",
           alignItems: "center",
           gap: "6px",
-          paddingLeft: "20px",
           marginTop: "2px",
         }}
       >
@@ -143,7 +113,7 @@ function NotificationItem({
           style={{
             fontSize: "14px",
             fontWeight: "700",
-            color: n.unread ? "#e5e7eb" : "#6b7280",
+            color: n.unread ? "#e5e7eb" : "#858fa3",
           }}
         >
           {relativeTime(n.updated_at)}
@@ -210,36 +180,6 @@ function NotificationItem({
           </button>
         </div>
       </div>
-      {/* Expanded comment for mentions */}
-      {isExpanded && hasMentionComment && (
-        <div
-          style={{
-            marginTop: "4px",
-            marginLeft: "20px",
-            padding: "8px 10px",
-            background: "#ffffff06",
-            border: "1px solid #252525",
-            borderRadius: "6px",
-            fontSize: "11px",
-            color: "#9ca3af",
-            wordBreak: "break-word",
-            lineHeight: "1.5",
-            whiteSpace: "pre-wrap",
-          }}
-        >
-          {n.commentLoading && (
-            <span style={{ fontStyle: "italic", color: "#4b5563" }}>
-              Loading comment…
-            </span>
-          )}
-          {!n.commentLoading && n.commentBody && n.commentBody}
-          {!n.commentLoading && !n.commentBody && (
-            <span style={{ fontStyle: "italic", color: "#4b5563" }}>
-              No comment available
-            </span>
-          )}
-        </div>
-      )}
     </div>
   );
 }
@@ -249,8 +189,6 @@ function TierSection({
   items,
   defaultExpanded = true,
   onMarkRead,
-  expandedId,
-  onToggleExpand,
   confirmDeleteId,
   onConfirmDelete,
 }) {
@@ -300,8 +238,6 @@ function TierSection({
               key={n.id}
               n={n}
               onMarkRead={onMarkRead}
-              expandedId={expandedId}
-              onToggleExpand={onToggleExpand}
               confirmDeleteId={confirmDeleteId}
               onConfirmDelete={onConfirmDelete}
             />
@@ -320,24 +256,13 @@ export default function GitHubPanel({
   loading,
   onMarkRead,
   onMarkDone,
-  onFetchComment,
 }) {
-  const [expandedId, setExpandedId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const confirmTimeoutRef = useRef(null);
 
   useEffect(() => {
     return () => clearTimeout(confirmTimeoutRef.current);
   }, []);
-
-  const handleToggleExpand = (threadId) => {
-    if (expandedId === threadId) {
-      setExpandedId(null);
-    } else {
-      setExpandedId(threadId);
-      onFetchComment(threadId);
-    }
-  };
 
   const handleConfirmDelete = (threadId) => {
     if (confirmDeleteId === threadId) {
@@ -492,8 +417,6 @@ export default function GitHubPanel({
             items={grouped.newStuff}
             defaultExpanded
             onMarkRead={onMarkRead}
-            expandedId={expandedId}
-            onToggleExpand={handleToggleExpand}
             confirmDeleteId={confirmDeleteId}
             onConfirmDelete={handleConfirmDelete}
           />
@@ -502,8 +425,6 @@ export default function GitHubPanel({
             items={grouped.updates}
             defaultExpanded
             onMarkRead={onMarkRead}
-            expandedId={expandedId}
-            onToggleExpand={handleToggleExpand}
             confirmDeleteId={confirmDeleteId}
             onConfirmDelete={handleConfirmDelete}
           />
@@ -512,8 +433,6 @@ export default function GitHubPanel({
             items={grouped.noise}
             defaultExpanded={false}
             onMarkRead={onMarkRead}
-            expandedId={expandedId}
-            onToggleExpand={handleToggleExpand}
             confirmDeleteId={confirmDeleteId}
             onConfirmDelete={handleConfirmDelete}
           />
