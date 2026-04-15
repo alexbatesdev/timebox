@@ -2,7 +2,7 @@ const token = () => import.meta.env.VITE_GITHUB_TOKEN;
 export const isGitHubConfigured = () => Boolean(token());
 
 const ghFetch = async (path, options = {}) => {
-  const res = await fetch(`/api/github${path}`, options);
+  const res = await fetch(`/api/github${path}`, { cache: "no-store", ...options });
   if (!res.ok) throw new Error(`GitHub API error (${res.status})`);
   return res.json();
 };
@@ -42,11 +42,11 @@ export const notificationUrl = (notification) => {
     .replace("/commits/", "/commit/");
 };
 
-const NEEDS_ACTION = new Set(["mention", "review_requested", "assign", "team_mention"]);
-const FYI = new Set(["comment", "author", "state_change"]);
+const NEW_STUFF = new Set(["review_requested", "assign"]);
+const UPDATES = new Set(["mention", "team_mention", "comment", "author", "state_change"]);
 
 export const classifyTier = (reason) => {
-  if (NEEDS_ACTION.has(reason)) return "action";
-  if (FYI.has(reason)) return "fyi";
+  if (NEW_STUFF.has(reason)) return "new";
+  if (UPDATES.has(reason)) return "updates";
   return "noise";
 };

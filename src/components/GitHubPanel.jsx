@@ -389,7 +389,7 @@ export default function GitHubPanel({
               borderRadius: "50%",
               background: "#fff",
               color: "#000",
-              fontSize: "10px",
+              fontSize: "12px",
               fontWeight: "700",
             }}
           >
@@ -458,8 +458,8 @@ export default function GitHubPanel({
         {/* Notification list */}
         <div style={{ flex: 1, overflowY: "auto", padding: "4px 0" }}>
           {loading &&
-            !grouped.action.length &&
-            !grouped.fyi.length &&
+            !grouped.newStuff.length &&
+            !grouped.updates.length &&
             !grouped.noise.length && (
               <div
                 style={{
@@ -473,8 +473,8 @@ export default function GitHubPanel({
               </div>
             )}
           {!loading &&
-            !grouped.action.length &&
-            !grouped.fyi.length &&
+            !grouped.newStuff.length &&
+            !grouped.updates.length &&
             !grouped.noise.length && (
               <div
                 style={{
@@ -488,8 +488,8 @@ export default function GitHubPanel({
               </div>
             )}
           <TierSection
-            title="Needs Action"
-            items={grouped.action}
+            title="New Stuff"
+            items={grouped.newStuff}
             defaultExpanded
             onMarkRead={onMarkRead}
             expandedId={expandedId}
@@ -498,8 +498,8 @@ export default function GitHubPanel({
             onConfirmDelete={handleConfirmDelete}
           />
           <TierSection
-            title="FYI"
-            items={grouped.fyi}
+            title="Updates"
+            items={grouped.updates}
             defaultExpanded
             onMarkRead={onMarkRead}
             expandedId={expandedId}
