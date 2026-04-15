@@ -72,7 +72,7 @@ function NotificationItem({ n, onMarkRead, confirmDeleteId, onConfirmDelete }) {
             flex: 1,
             minWidth: 0,
             fontSize: "12px",
-            color: n.unread ? "#d1d5db" : "#6b7280",
+            color: n.unread ? "#d1d5db" : "#9ba0ab",
             fontWeight: n.unread ? "600" : "400",
             whiteSpace: "nowrap",
             overflow: "hidden",
@@ -113,15 +113,15 @@ function NotificationItem({ n, onMarkRead, confirmDeleteId, onConfirmDelete }) {
           style={{
             fontSize: "14px",
             fontWeight: "700",
-            color: n.unread ? "#e5e7eb" : "#858fa3",
+            color: n.unread ? "#e5e7eb" : "#a8afbd",
           }}
         >
           {relativeTime(n.updated_at)}
         </span>
         <span
           style={{
-            fontSize: "10px",
-            color: "#4b5563",
+            fontSize: "1px",
+            color: "#6b7280",
             minWidth: 0,
             whiteSpace: "nowrap",
             overflow: "hidden",
@@ -193,12 +193,12 @@ function TierSection({
   onConfirmDelete,
 }) {
   const [collapsed, setCollapsed] = useState(!defaultExpanded);
-  if (!items.length) return null;
   const unread = items.filter((n) => n.unread).length;
+  const read = items.length - unread;
   return (
     <div style={{ marginBottom: "4px" }}>
       <button
-        onClick={() => setCollapsed(!collapsed)}
+        onClick={() => items.length > 0 && setCollapsed(!collapsed)}
         style={{
           display: "flex",
           alignItems: "center",
@@ -207,29 +207,35 @@ function TierSection({
           padding: "6px 16px",
           background: "none",
           border: "none",
-          cursor: "pointer",
+          cursor: items.length > 0 ? "pointer" : "default",
           fontFamily: "inherit",
         }}
       >
         <span style={{ fontSize: "9px", color: "#6b7280" }}>
-          {collapsed ? "▶" : "▼"}
+          {items.length === 0 ? "◦" : collapsed ? "▶" : "▼"}
         </span>
         <span style={{ fontSize: "11px", color: "#9ca3af", fontWeight: "600" }}>
           {title}
         </span>
-        {unread > 0 && (
-          <span
-            style={{
-              fontSize: "9px",
-              padding: "0 5px",
-              borderRadius: "9999px",
-              background: "#333",
-              color: "#e5e7eb",
-            }}
-          >
-            {unread}
-          </span>
-        )}
+        <span style={{ fontSize: "9px", color: "#4b5563" }}>
+          {unread > 0 && (
+            <span
+              style={{
+                color: "#e5e7eb",
+                padding: "0 4px",
+                borderRadius: "9999px",
+                background: "#333",
+              }}
+            >
+              {unread}
+            </span>
+          )}
+          {unread > 0 && read > 0 && " "}
+          {read > 0 && <span style={{ color: "#6b7280" }}>{read} read</span>}
+          {items.length === 0 && (
+            <span style={{ color: "#4b5563" }}>empty</span>
+          )}
+        </span>
       </button>
       {!collapsed && (
         <div style={{ padding: "0 16px" }}>
