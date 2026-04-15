@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { getWeekdayKey } from "./utils/time.js";
+import { getWeekdayKey, todayKey } from "./utils/time.js";
 import { clearState } from "./utils/storage.js";
 import { loadScheduleConfig } from "./data/scheduleConfig.js";
 import { createScheduleState } from "./data/schedules.js";
@@ -84,7 +84,7 @@ export default function App() {
     clearNotified();
   };
 
-  const reloadScheduleFromConfig = async () => {
+  const reloadScheduleFromConfig = useCallback(async () => {
     clearState();
     setConfigStatus("loading");
     const freshConfig = await loadScheduleConfig();
@@ -104,7 +104,25 @@ export default function App() {
       clearNotified();
     }
     setConfigStatus("ready");
-  };
+  }, [clearNotified]);
+
+  // Auto-reload when tab becomes visible on a new day
+  const loadedDateKey = useRef(todayKey());
+  const reloadTeamwork = teamwork.reload;
+  const reloadLooseEnds = looseEnds.reload;
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      if (todayKey() !== loadedDateKey.current) {
+        loadedDateKey.current = todayKey();
+        reloadScheduleFromConfig();
+        reloadTeamwork();
+        reloadLooseEnds();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [reloadScheduleFromConfig, reloadTeamwork, reloadLooseEnds]);
 
   const getCurIdx = () => {
     let idx = 0;
