@@ -15,6 +15,20 @@ export const fetchNotifications = async () => {
   return Array.isArray(data) ? data : [];
 };
 
+export const fetchNoiseNotifications = async () => {
+  const since = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString();
+  let all = [];
+  let page = 1;
+  while (true) {
+    const data = await ghFetch(`/notifications?all=true&since=${since}&per_page=50&page=${page}`);
+    const items = Array.isArray(data) ? data : [];
+    all = all.concat(items.filter((n) => n.reason === "ci_activity"));
+    if (items.length < 50) break;
+    page++;
+  }
+  return all;
+};
+
 export const markThreadRead = async (threadId) => {
   const res = await fetch(`/api/github/notifications/threads/${threadId}`, {
     method: "PATCH",
@@ -32,7 +46,14 @@ export const markThreadDone = async (threadId) => {
 
 export const notificationUrl = (notification) => {
   const apiUrl = notification.subject?.url;
-  if (!apiUrl) return null;
+  const repoUrl = notification.repository?.html_url;
+  if (!apiUrl) return repoUrl ? `${repoUrl}/actions` : null;
+  if (!apiUrl.startsWith("https://api.github.com/repos")) {
+    return repoUrl ? `${repoUrl}/actions` : null;
+  }
+  if (notification.subject?.type === "CheckSuite") {
+    return repoUrl ? `${repoUrl}/actions` : null;
+  }
   return apiUrl
     .replace("https://api.github.com/repos", "https://github.com")
     .replace("/pulls/", "/pull/")

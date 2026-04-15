@@ -262,6 +262,7 @@ export default function GitHubPanel({
   loading,
   onMarkRead,
   onMarkDone,
+  onLoadNoise,
 }) {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const confirmTimeoutRef = useRef(null);
@@ -269,6 +270,10 @@ export default function GitHubPanel({
   useEffect(() => {
     return () => clearTimeout(confirmTimeoutRef.current);
   }, []);
+
+  useEffect(() => {
+    if (open) onLoadNoise();
+  }, [open, onLoadNoise]);
 
   const handleConfirmDelete = (threadId) => {
     if (confirmDeleteId === threadId) {

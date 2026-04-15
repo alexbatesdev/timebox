@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   isGitHubConfigured,
   fetchNotifications,
+  fetchNoiseNotifications,
   markThreadRead,
   markThreadDone,
   classifyTier,
@@ -22,6 +23,7 @@ const saveDismissed = (set) => {
 export const useGitHubNotifications = () => {
   const configured = isGitHubConfigured();
   const [notifications, setNotifications] = useState([]);
+  const [noiseNotifications, setNoiseNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const pollTimeoutRef = useRef(null);
   const dismissedRef = useRef(loadDismissed());
@@ -89,22 +91,37 @@ export const useGitHubNotifications = () => {
     [reload],
   );
 
+  const loadNoise = useCallback(async () => {
+    if (!configured) return;
+    try {
+      const data = await fetchNoiseNotifications();
+      setNoiseNotifications(data.filter((n) => !dismissedRef.current.has(n.id)));
+    } catch (err) {
+      console.error("GitHub noise fetch error:", err);
+    }
+  }, [configured]);
+
   const grouped = useMemo(() => {
     const newStuff = [],
       updates = [],
       noise = [];
+    const seenIds = new Set();
     for (const n of notifications) {
+      seenIds.add(n.id);
       const tier = classifyTier(n.reason);
       if (tier === "new") newStuff.push(n);
       else if (tier === "updates") updates.push(n);
       else noise.push(n);
+    }
+    for (const n of noiseNotifications) {
+      if (!seenIds.has(n.id)) noise.push(n);
     }
     const byRecent = (a, b) => new Date(b.updated_at) - new Date(a.updated_at);
     newStuff.sort(byRecent);
     updates.sort(byRecent);
     noise.sort(byRecent);
     return { newStuff, updates, noise };
-  }, [notifications]);
+  }, [notifications, noiseNotifications]);
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => n.unread).length,
@@ -120,5 +137,6 @@ export const useGitHubNotifications = () => {
     reload,
     markRead,
     markDone,
+    loadNoise,
   };
 };

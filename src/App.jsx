@@ -614,7 +614,7 @@ export default function App() {
               loading={github.loading}
               onMarkRead={github.markRead}
               onMarkDone={github.markDone}
-
+              onLoadNoise={github.loadNoise}
             />
           )}
         </div>
