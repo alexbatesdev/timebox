@@ -7,6 +7,15 @@ const GITHUB_SVG = (
   </svg>
 );
 
+const isLightColor = (hex) => {
+  if (!hex) return false;
+  const c = hex.replace("#", "");
+  const r = parseInt(c.substring(0, 2), 16);
+  const g = parseInt(c.substring(2, 4), 16);
+  const b = parseInt(c.substring(4, 6), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 > 150;
+};
+
 function relativeTime(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
@@ -18,23 +27,54 @@ function relativeTime(dateStr) {
   return `${days}d`;
 }
 
-function subjectTypeLabel(type) {
-  if (type === "PullRequest") return "PR";
-  if (type === "Issue") return "Issue";
-  if (type === "Commit") return "Commit";
-  if (type === "CheckSuite") return "CI";
-  return type || "";
+function reasonLabel(reason) {
+  const labels = {
+    mention: "Mentioned",
+    review_requested: "Review",
+    assign: "Assigned",
+    team_mention: "Team",
+    comment: "Comment",
+    author: "Author",
+    state_change: "Changed",
+    subscribed: "Watching",
+    ci_activity: "CI",
+  };
+  return labels[reason] || reason;
 }
 
-function NotificationItem({ n, onMarkRead, expandedId, onToggleExpand, confirmDeleteId, onConfirmDelete }) {
+function reasonColor(reason) {
+  const colors = {
+    mention: "#f59e0b",
+    review_requested: "#a855f7",
+    assign: "#3b82f6",
+    team_mention: "#f59e0b",
+    comment: "#6b7280",
+    author: "#6b7280",
+    state_change: "#22c55e",
+    subscribed: "#4b5563",
+    ci_activity: "#4b5563",
+  };
+  return colors[reason] || "#4b5563";
+}
+
+function NotificationItem({
+  n,
+  onMarkRead,
+  expandedId,
+  onToggleExpand,
+  confirmDeleteId,
+  onConfirmDelete,
+}) {
   const url = notificationUrl(n);
-  const isMention = n.reason === "mention" || n.reason === "team_mention";
   const isExpanded = expandedId === n.id;
+  const hasMentionComment =
+    n.reason === "mention" || n.reason === "team_mention";
 
   return (
     <div style={{ borderBottom: "1px solid #1a1a1a", padding: "6px 0" }}>
+      {/* Row 1: title */}
       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-        {isMention && (
+        {hasMentionComment ? (
           <button
             onClick={() => onToggleExpand(n.id)}
             style={{
@@ -50,49 +90,86 @@ function NotificationItem({ n, onMarkRead, expandedId, onToggleExpand, confirmDe
           >
             {isExpanded ? "▼" : "▶"}
           </button>
+        ) : (
+          <span style={{ width: "14px", flexShrink: 0 }} />
         )}
-        {!isMention && <span style={{ width: "14px", flexShrink: 0 }} />}
+        <a
+          href={url || "#"}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            flex: 1,
+            minWidth: 0,
+            fontSize: "12px",
+            color: n.unread ? "#d1d5db" : "#6b7280",
+            fontWeight: n.unread ? "600" : "400",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            textDecoration: "none",
+            textAlign: "left",
+          }}
+          title={n.subject?.title}
+        >
+          {n.subject?.title}
+        </a>
+      </div>
+      {/* Row 2: metadata + actions */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          paddingLeft: "20px",
+          marginTop: "2px",
+        }}
+      >
         <span
           style={{
             fontSize: "9px",
-            padding: "1px 4px",
-            borderRadius: "3px",
-            background: "#252525",
-            color: "#9ca3af",
-            flexShrink: 0,
+            padding: "1px 5px",
+            borderRadius: "9999px",
+            background: reasonColor(n.reason),
+            color: isLightColor(reasonColor(n.reason)) ? "#1a1a1a" : "#fff",
             fontFamily: "inherit",
+            minWidth: "44px",
+            textAlign: "center",
+            display: "inline-block",
           }}
         >
-          {subjectTypeLabel(n.subject?.type)}
+          {reasonLabel(n.reason)}
         </span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            style={{
-              fontSize: "12px",
-              color: n.unread ? "#e5e7eb" : "#6b7280",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              fontWeight: n.unread ? "600" : "400",
-            }}
-            title={n.subject?.title}
-          >
-            {n.subject?.title}
-          </div>
-          <div
-            style={{
-              fontSize: "10px",
-              color: "#4b5563",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            {n.repository?.full_name}
-            <span style={{ marginLeft: "6px" }}>{relativeTime(n.updated_at)}</span>
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: "4px", flexShrink: 0, alignItems: "center" }}>
+        <span
+          style={{
+            fontSize: "14px",
+            fontWeight: "700",
+            color: n.unread ? "#e5e7eb" : "#6b7280",
+          }}
+        >
+          {relativeTime(n.updated_at)}
+        </span>
+        <span
+          style={{
+            fontSize: "10px",
+            color: "#4b5563",
+            minWidth: 0,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {n.repository?.full_name}
+        </span>
+        <div
+          style={{
+            display: "flex",
+            gap: "4px",
+            flexShrink: 0,
+            alignItems: "center",
+            justifySelf: "flex-end",
+            marginLeft: "auto",
+          }}
+        >
           {n.unread && (
             <button
               onClick={() => onMarkRead(n.id)}
@@ -101,7 +178,7 @@ function NotificationItem({ n, onMarkRead, expandedId, onToggleExpand, confirmDe
                 background: "none",
                 border: "1px solid #333",
                 borderRadius: "4px",
-                color: "#6b7280",
+                color: "#22c55e",
                 cursor: "pointer",
                 fontSize: "10px",
                 padding: "2px 5px",
@@ -116,9 +193,12 @@ function NotificationItem({ n, onMarkRead, expandedId, onToggleExpand, confirmDe
             title="Mark as done"
             style={{
               background: confirmDeleteId === n.id ? "#dc2626" : "none",
-              border: confirmDeleteId === n.id ? "1px solid #dc2626" : "1px solid #333",
+              border:
+                confirmDeleteId === n.id
+                  ? "1px solid #dc2626"
+                  : "1px solid #333",
               borderRadius: "4px",
-              color: confirmDeleteId === n.id ? "#fff" : "#6b7280",
+              color: confirmDeleteId === n.id ? "#fff" : "#dc2626",
               cursor: "pointer",
               fontSize: "10px",
               padding: "2px 5px",
@@ -128,20 +208,10 @@ function NotificationItem({ n, onMarkRead, expandedId, onToggleExpand, confirmDe
           >
             {confirmDeleteId === n.id ? "Sure?" : "✕"}
           </button>
-          {url && (
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: "#a855f7", fontSize: "12px", textDecoration: "none" }}
-              title="Open in GitHub"
-            >
-              ↗
-            </a>
-          )}
         </div>
       </div>
-      {isExpanded && isMention && (
+      {/* Expanded comment for mentions */}
+      {isExpanded && hasMentionComment && (
         <div
           style={{
             marginTop: "4px",
@@ -158,11 +228,15 @@ function NotificationItem({ n, onMarkRead, expandedId, onToggleExpand, confirmDe
           }}
         >
           {n.commentLoading && (
-            <span style={{ fontStyle: "italic", color: "#4b5563" }}>Loading comment…</span>
+            <span style={{ fontStyle: "italic", color: "#4b5563" }}>
+              Loading comment…
+            </span>
           )}
           {!n.commentLoading && n.commentBody && n.commentBody}
           {!n.commentLoading && !n.commentBody && (
-            <span style={{ fontStyle: "italic", color: "#4b5563" }}>No comment available</span>
+            <span style={{ fontStyle: "italic", color: "#4b5563" }}>
+              No comment available
+            </span>
           )}
         </div>
       )}
@@ -170,7 +244,16 @@ function NotificationItem({ n, onMarkRead, expandedId, onToggleExpand, confirmDe
   );
 }
 
-function TierSection({ title, items, defaultExpanded = true, onMarkRead, expandedId, onToggleExpand, confirmDeleteId, onConfirmDelete }) {
+function TierSection({
+  title,
+  items,
+  defaultExpanded = true,
+  onMarkRead,
+  expandedId,
+  onToggleExpand,
+  confirmDeleteId,
+  onConfirmDelete,
+}) {
   const [collapsed, setCollapsed] = useState(!defaultExpanded);
   if (!items.length) return null;
   const unread = items.filter((n) => n.unread).length;
@@ -190,8 +273,12 @@ function TierSection({ title, items, defaultExpanded = true, onMarkRead, expande
           fontFamily: "inherit",
         }}
       >
-        <span style={{ fontSize: "9px", color: "#6b7280" }}>{collapsed ? "▶" : "▼"}</span>
-        <span style={{ fontSize: "11px", color: "#9ca3af", fontWeight: "600" }}>{title}</span>
+        <span style={{ fontSize: "9px", color: "#6b7280" }}>
+          {collapsed ? "▶" : "▼"}
+        </span>
+        <span style={{ fontSize: "11px", color: "#9ca3af", fontWeight: "600" }}>
+          {title}
+        </span>
         {unread > 0 && (
           <span
             style={{
@@ -260,7 +347,10 @@ export default function GitHubPanel({
     } else {
       setConfirmDeleteId(threadId);
       clearTimeout(confirmTimeoutRef.current);
-      confirmTimeoutRef.current = setTimeout(() => setConfirmDeleteId(null), 3000);
+      confirmTimeoutRef.current = setTimeout(
+        () => setConfirmDeleteId(null),
+        3000,
+      );
     }
   };
 
@@ -367,16 +457,36 @@ export default function GitHubPanel({
 
         {/* Notification list */}
         <div style={{ flex: 1, overflowY: "auto", padding: "4px 0" }}>
-          {loading && !grouped.action.length && !grouped.fyi.length && !grouped.noise.length && (
-            <div style={{ padding: "16px", color: "#6b7280", fontSize: "13px", textAlign: "center" }}>
-              Loading notifications...
-            </div>
-          )}
-          {!loading && !grouped.action.length && !grouped.fyi.length && !grouped.noise.length && (
-            <div style={{ padding: "16px", color: "#4b5563", fontSize: "13px", textAlign: "center" }}>
-              No notifications
-            </div>
-          )}
+          {loading &&
+            !grouped.action.length &&
+            !grouped.fyi.length &&
+            !grouped.noise.length && (
+              <div
+                style={{
+                  padding: "16px",
+                  color: "#6b7280",
+                  fontSize: "13px",
+                  textAlign: "center",
+                }}
+              >
+                Loading notifications...
+              </div>
+            )}
+          {!loading &&
+            !grouped.action.length &&
+            !grouped.fyi.length &&
+            !grouped.noise.length && (
+              <div
+                style={{
+                  padding: "16px",
+                  color: "#4b5563",
+                  fontSize: "13px",
+                  textAlign: "center",
+                }}
+              >
+                No notifications
+              </div>
+            )}
           <TierSection
             title="Needs Action"
             items={grouped.action}
