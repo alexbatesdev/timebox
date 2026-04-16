@@ -846,10 +846,11 @@ export default function GitHubPanel({
           <CollapsibleSection
             title="Pull Requests"
             detail={(() => {
+              const review = prs.reviewRequests.filter((pr) => !hiddenRepos.has(pr.repo)).length;
+              const mine = prs.mine.filter((pr) => !hiddenRepos.has(pr.repo)).length;
               const parts = [];
-              if (prs.reviewRequests.length > 0)
-                parts.push(`${prs.reviewRequests.length} awaiting review`);
-              if (prs.mine.length > 0) parts.push(`${prs.mine.length} open`);
+              if (review > 0) parts.push(`${review} awaiting review`);
+              if (mine > 0) parts.push(`${mine} open`);
               return parts.join(", ") || null;
             })()}
           >
