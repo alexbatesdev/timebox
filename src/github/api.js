@@ -74,3 +74,24 @@ export const classifyTier = (reason) => {
   if (UPDATES.has(reason)) return "updates";
   return "noise";
 };
+
+const mapPR = (item) => ({
+  id: item.id,
+  number: item.number,
+  title: item.title,
+  url: item.html_url,
+  author: item.user?.login,
+  repo: item.repository_url?.replace("https://api.github.com/repos/", ""),
+  updatedAt: item.updated_at,
+  draft: item.draft,
+});
+
+export const fetchMyPRs = async () => {
+  const data = await ghFetch("/search/issues?q=is:pr+is:open+author:@me&sort=updated&per_page=50");
+  return (data.items || []).map(mapPR);
+};
+
+export const fetchReviewRequests = async () => {
+  const data = await ghFetch("/search/issues?q=is:pr+is:open+review-requested:@me&sort=updated&per_page=50");
+  return (data.items || []).map(mapPR);
+};

@@ -3,6 +3,8 @@ import {
   isGitHubConfigured,
   fetchNotifications,
   fetchNoiseNotifications,
+  fetchMyPRs,
+  fetchReviewRequests,
   markThreadRead,
   markThreadDone,
   classifyTier,
@@ -91,6 +93,18 @@ export const useGitHubNotifications = () => {
     [reload],
   );
 
+  const [prs, setPrs] = useState({ mine: [], reviewRequests: [] });
+
+  const loadPRs = useCallback(async () => {
+    if (!configured) return;
+    try {
+      const [mine, reviewRequests] = await Promise.all([fetchMyPRs(), fetchReviewRequests()]);
+      setPrs({ mine, reviewRequests });
+    } catch (err) {
+      console.error("GitHub PR fetch error:", err);
+    }
+  }, [configured]);
+
   const loadNoise = useCallback(async () => {
     if (!configured) return;
     try {
@@ -138,5 +152,7 @@ export const useGitHubNotifications = () => {
     markRead,
     markDone,
     loadNoise,
+    prs,
+    loadPRs,
   };
 };

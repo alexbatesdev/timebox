@@ -254,6 +254,198 @@ function TierSection({
   );
 }
 
+const HIDDEN_REPOS_KEY = "timebox-gh-hidden-repos";
+const loadHiddenRepos = () => {
+  const raw = localStorage.getItem(HIDDEN_REPOS_KEY);
+  return raw ? new Set(JSON.parse(raw)) : new Set();
+};
+const saveHiddenRepos = (set) => {
+  localStorage.setItem(HIDDEN_REPOS_KEY, JSON.stringify([...set]));
+};
+
+function PRItem({ pr }) {
+  return (
+    <div style={{ borderBottom: "1px solid #1a1a1a", padding: "6px 0" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+        <a
+          href={pr.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            flex: 1,
+            minWidth: 0,
+            fontSize: "12px",
+            color: "#d1d5db",
+            fontWeight: "600",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            textDecoration: "none",
+            textAlign: "left",
+          }}
+          title={pr.title}
+        >
+          {pr.title}
+        </a>
+        {pr.draft && (
+          <span
+            style={{
+              fontSize: "9px",
+              padding: "1px 5px",
+              borderRadius: "9999px",
+              background: "#4b5563",
+              color: "#d1d5db",
+              flexShrink: 0,
+            }}
+          >
+            Draft
+          </span>
+        )}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "2px" }}>
+        <span style={{ fontSize: "10px", color: "#6b7280" }}>#{pr.number}</span>
+        <span style={{ fontSize: "10px", color: "#4b5563" }}>{pr.author}</span>
+        <span style={{ fontSize: "10px", color: "#4b5563" }}>{pr.repo}</span>
+        <span style={{ fontSize: "10px", fontWeight: "700", color: "#6b7280", marginLeft: "auto" }}>
+          {relativeTime(pr.updatedAt)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function RepoGroup({ repo, prs, onHide }) {
+  const [collapsed, setCollapsed] = useState(false);
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 0", marginTop: "4px" }}>
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          style={{
+            background: "none",
+            border: "none",
+            color: "#6b7280",
+            cursor: "pointer",
+            fontSize: "8px",
+            padding: "0 2px",
+            flexShrink: 0,
+          }}
+        >
+          {collapsed ? "▶" : "▼"}
+        </button>
+        <span style={{ fontSize: "10px", color: "#6b7280", fontWeight: "600" }}>{repo}</span>
+        <span style={{ fontSize: "9px", color: "#4b5563" }}>
+          {prs.length}
+        </span>
+        <button
+          onClick={onHide}
+          title={`Hide ${repo}`}
+          style={{
+            background: "none",
+            border: "none",
+            color: "#4b5563",
+            cursor: "pointer",
+            fontSize: "9px",
+            padding: "0 2px",
+            fontFamily: "inherit",
+            marginLeft: "auto",
+          }}
+        >
+          hide
+        </button>
+      </div>
+      {!collapsed && prs.map((pr) => (
+        <PRItem key={pr.id} pr={pr} />
+      ))}
+    </div>
+  );
+}
+
+function PRSection({ title, items, hiddenRepos, onToggleRepo, defaultExpanded = true }) {
+  const [collapsed, setCollapsed] = useState(!defaultExpanded);
+  const visible = items.filter((pr) => !hiddenRepos.has(pr.repo));
+  const hiddenCount = items.length - visible.length;
+
+  // Group by repo
+  const byRepo = {};
+  for (const pr of visible) {
+    (byRepo[pr.repo] || (byRepo[pr.repo] = [])).push(pr);
+  }
+  const repos = Object.keys(byRepo).sort();
+
+  return (
+    <div style={{ marginBottom: "4px" }}>
+      <button
+        onClick={() => items.length > 0 && setCollapsed(!collapsed)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          width: "100%",
+          padding: "6px 16px",
+          background: "none",
+          border: "none",
+          cursor: items.length > 0 ? "pointer" : "default",
+          fontFamily: "inherit",
+        }}
+      >
+        <span style={{ fontSize: "9px", color: "#6b7280" }}>
+          {items.length === 0 ? "◦" : collapsed ? "▶" : "▼"}
+        </span>
+        <span style={{ fontSize: "11px", color: "#9ca3af", fontWeight: "600" }}>{title}</span>
+        <span style={{ fontSize: "9px", color: "#4b5563" }}>
+          {visible.length > 0 && (
+            <span style={{ color: "#e5e7eb", padding: "0 4px", borderRadius: "9999px", background: "#333" }}>
+              {visible.length}
+            </span>
+          )}
+          {hiddenCount > 0 && (
+            <span style={{ color: "#4b5563", marginLeft: "4px" }}>
+              {hiddenCount} hidden
+            </span>
+          )}
+          {items.length === 0 && <span style={{ color: "#4b5563" }}>empty</span>}
+        </span>
+      </button>
+      {!collapsed && visible.length > 0 && (
+        <div style={{ padding: "0 16px" }}>
+          {repos.map((repo) => (
+            <RepoGroup key={repo} repo={repo} prs={byRepo[repo]} onHide={() => onToggleRepo(repo)} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CollapsibleSection({ title, children, defaultExpanded = true }) {
+  const [collapsed, setCollapsed] = useState(!defaultExpanded);
+  return (
+    <div style={{ borderBottom: "1px solid #252525" }}>
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          width: "100%",
+          padding: "10px 16px",
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          fontFamily: "inherit",
+        }}
+      >
+        <span style={{ fontSize: "10px", color: "#6b7280" }}>
+          {collapsed ? "▶" : "▼"}
+        </span>
+        <span style={{ fontSize: "13px", color: "#e5e7eb", fontWeight: "700" }}>{title}</span>
+      </button>
+      {!collapsed && children}
+    </div>
+  );
+}
+
 export default function GitHubPanel({
   open,
   onToggle,
@@ -263,17 +455,38 @@ export default function GitHubPanel({
   onMarkRead,
   onMarkDone,
   onLoadNoise,
+  prs,
+  onLoadPRs,
 }) {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [hiddenRepos, setHiddenRepos] = useState(loadHiddenRepos);
   const confirmTimeoutRef = useRef(null);
+
+  const toggleHiddenRepo = (repo) => {
+    setHiddenRepos((prev) => {
+      const next = new Set(prev);
+      if (next.has(repo)) next.delete(repo);
+      else next.add(repo);
+      saveHiddenRepos(next);
+      return next;
+    });
+  };
+
+  const unhideAllRepos = () => {
+    setHiddenRepos(new Set());
+    saveHiddenRepos(new Set());
+  };
 
   useEffect(() => {
     return () => clearTimeout(confirmTimeoutRef.current);
   }, []);
 
   useEffect(() => {
-    if (open) onLoadNoise();
-  }, [open, onLoadNoise]);
+    if (open) {
+      onLoadNoise();
+      onLoadPRs();
+    }
+  }, [open, onLoadNoise, onLoadPRs]);
 
   const handleConfirmDelete = (threadId) => {
     if (confirmDeleteId === threadId) {
@@ -391,62 +604,60 @@ export default function GitHubPanel({
           </button>
         </div>
 
-        {/* Notification list */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "4px 0" }}>
-          {loading &&
-            !grouped.newStuff.length &&
-            !grouped.updates.length &&
-            !grouped.noise.length && (
-              <div
+        {/* Content */}
+        <div style={{ flex: 1, overflowY: "auto" }}>
+          {loading && (
+            <div style={{ padding: "16px", color: "#6b7280", fontSize: "13px", textAlign: "center" }}>
+              Loading...
+            </div>
+          )}
+          <CollapsibleSection title="Notifications">
+            <TierSection
+              title="New Stuff"
+              items={grouped.newStuff}
+              defaultExpanded
+              onMarkRead={onMarkRead}
+              confirmDeleteId={confirmDeleteId}
+              onConfirmDelete={handleConfirmDelete}
+            />
+            <TierSection
+              title="Updates"
+              items={grouped.updates}
+              defaultExpanded
+              onMarkRead={onMarkRead}
+              confirmDeleteId={confirmDeleteId}
+              onConfirmDelete={handleConfirmDelete}
+            />
+            <TierSection
+              title="Noise"
+              items={grouped.noise}
+              defaultExpanded={false}
+              onMarkRead={onMarkRead}
+              confirmDeleteId={confirmDeleteId}
+              onConfirmDelete={handleConfirmDelete}
+            />
+          </CollapsibleSection>
+          <CollapsibleSection title="Pull Requests">
+            <PRSection title="Awaiting My Review" items={prs.reviewRequests} hiddenRepos={hiddenRepos} onToggleRepo={toggleHiddenRepo} />
+            <PRSection title="My Open PRs" items={prs.mine} hiddenRepos={hiddenRepos} onToggleRepo={toggleHiddenRepo} />
+            {hiddenRepos.size > 0 && (
+              <button
+                onClick={unhideAllRepos}
                 style={{
-                  padding: "16px",
-                  color: "#6b7280",
-                  fontSize: "13px",
-                  textAlign: "center",
-                }}
-              >
-                Loading notifications...
-              </div>
-            )}
-          {!loading &&
-            !grouped.newStuff.length &&
-            !grouped.updates.length &&
-            !grouped.noise.length && (
-              <div
-                style={{
-                  padding: "16px",
+                  display: "block",
+                  margin: "4px 16px 8px",
+                  background: "none",
+                  border: "none",
                   color: "#4b5563",
-                  fontSize: "13px",
-                  textAlign: "center",
+                  cursor: "pointer",
+                  fontSize: "10px",
+                  fontFamily: "inherit",
                 }}
               >
-                No notifications
-              </div>
+                Show {hiddenRepos.size} hidden repo{hiddenRepos.size > 1 ? "s" : ""}
+              </button>
             )}
-          <TierSection
-            title="New Stuff"
-            items={grouped.newStuff}
-            defaultExpanded
-            onMarkRead={onMarkRead}
-            confirmDeleteId={confirmDeleteId}
-            onConfirmDelete={handleConfirmDelete}
-          />
-          <TierSection
-            title="Updates"
-            items={grouped.updates}
-            defaultExpanded
-            onMarkRead={onMarkRead}
-            confirmDeleteId={confirmDeleteId}
-            onConfirmDelete={handleConfirmDelete}
-          />
-          <TierSection
-            title="Noise"
-            items={grouped.noise}
-            defaultExpanded={false}
-            onMarkRead={onMarkRead}
-            confirmDeleteId={confirmDeleteId}
-            onConfirmDelete={handleConfirmDelete}
-          />
+          </CollapsibleSection>
         </div>
       </div>
     </>
