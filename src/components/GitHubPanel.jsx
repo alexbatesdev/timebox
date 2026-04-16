@@ -418,7 +418,7 @@ function PRSection({ title, items, hiddenRepos, onToggleRepo, defaultExpanded = 
   );
 }
 
-function CollapsibleSection({ title, children, defaultExpanded = true }) {
+function CollapsibleSection({ title, detail, children, defaultExpanded = true }) {
   const [collapsed, setCollapsed] = useState(!defaultExpanded);
   return (
     <div style={{ borderBottom: "1px solid #252525" }}>
@@ -440,6 +440,7 @@ function CollapsibleSection({ title, children, defaultExpanded = true }) {
           {collapsed ? "▶" : "▼"}
         </span>
         <span style={{ fontSize: "13px", color: "#e5e7eb", fontWeight: "700" }}>{title}</span>
+        {detail && <span style={{ fontSize: "10px", color: "#6b7280" }}>{detail}</span>}
       </button>
       {!collapsed && children}
     </div>
@@ -611,7 +612,18 @@ export default function GitHubPanel({
               Loading...
             </div>
           )}
-          <CollapsibleSection title="Notifications">
+          <CollapsibleSection
+            title="Notifications"
+            detail={(() => {
+              const all = [...grouped.newStuff, ...grouped.updates, ...grouped.noise];
+              const unread = all.filter((n) => n.unread).length;
+              const read = all.length - unread;
+              const parts = [];
+              if (unread > 0) parts.push(`${unread} unread`);
+              if (read > 0) parts.push(`${read} read`);
+              return parts.join(", ") || null;
+            })()}
+          >
             <TierSection
               title="New Stuff"
               items={grouped.newStuff}
@@ -637,7 +649,15 @@ export default function GitHubPanel({
               onConfirmDelete={handleConfirmDelete}
             />
           </CollapsibleSection>
-          <CollapsibleSection title="Pull Requests">
+          <CollapsibleSection
+            title="Pull Requests"
+            detail={(() => {
+              const parts = [];
+              if (prs.reviewRequests.length > 0) parts.push(`${prs.reviewRequests.length} awaiting review`);
+              if (prs.mine.length > 0) parts.push(`${prs.mine.length} open`);
+              return parts.join(", ") || null;
+            })()}
+          >
             <PRSection title="Awaiting My Review" items={prs.reviewRequests} hiddenRepos={hiddenRepos} onToggleRepo={toggleHiddenRepo} />
             <PRSection title="My Open PRs" items={prs.mine} hiddenRepos={hiddenRepos} onToggleRepo={toggleHiddenRepo} />
             {hiddenRepos.size > 0 && (
