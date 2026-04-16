@@ -203,6 +203,7 @@ function TaskRow({
   stages,
   onSelectStage,
   onCloseMenu,
+  pinned,
 }) {
   const hasContent =
     task.description || task.hasSubtasks || task.subtasks?.length > 0;
@@ -222,7 +223,7 @@ function TaskRow({
         style={{
           background: "none",
           border: "none",
-          color: hasKids ? "#d1d5db" : hasContent ? "#6b7280" : "#333",
+          color: pinned ? "#fde047" : hasKids ? "#d1d5db" : hasContent ? "#6b7280" : "#333",
           cursor: hasContent ? "pointer" : "default",
           fontSize: "10px",
           padding: "0 4px",
@@ -309,7 +310,10 @@ function TaskNode({
   stages,
   onSelectStage,
   onCloseMenu,
+  pinnedIds,
+  onTogglePin,
 }) {
+  const pinned = pinnedIds?.has(task.id);
   return (
     <div>
       <TaskRow
@@ -320,9 +324,24 @@ function TaskNode({
         stages={stages}
         onSelectStage={onSelectStage}
         onCloseMenu={onCloseMenu}
+        pinned={pinned}
       />
       {task.expanded && (
         <div style={{ paddingLeft: 16 }}>
+          <button
+            onClick={() => onTogglePin(task.id)}
+            style={{
+              background: "none",
+              border: "none",
+              color: pinned ? "#fde047" : "#4b5563",
+              cursor: "pointer",
+              fontSize: "11px",
+              padding: "2px 0",
+              fontFamily: "inherit",
+            }}
+          >
+            {pinned ? "★ Unpin" : "☆ Pin"}
+          </button>
           <DescriptionCard task={task} onToggle={onToggleDescExpanded} />
           {task.hasSubtasks && !task.subtasks && (
             <div
@@ -347,6 +366,8 @@ function TaskNode({
               stages={stages}
               onSelectStage={onSelectStage}
               onCloseMenu={onCloseMenu}
+              pinnedIds={pinnedIds}
+              onTogglePin={onTogglePin}
             />
           ))}
         </div>
@@ -368,6 +389,8 @@ export default function TeamworkPanel({
   onToggleDescExpanded,
   onLoadWorkflowStages,
   onChangeStage,
+  pinnedIds,
+  onTogglePin,
   panelLeft = 30,
 }) {
   const [menuTaskId, setMenuTaskId] = useState(null);
@@ -553,6 +576,8 @@ export default function TeamworkPanel({
                 stages={stages}
                 onSelectStage={onChangeStage}
                 onCloseMenu={() => setMenuTaskId(null)}
+                pinnedIds={pinnedIds}
+                onTogglePin={onTogglePin}
               />
             </div>
           ))}

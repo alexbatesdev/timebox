@@ -602,6 +602,8 @@ export default function App() {
               onToggleDescExpanded={teamwork.toggleDescExpanded}
               onLoadWorkflowStages={teamwork.loadWorkflowStages}
               onChangeStage={teamwork.changeStage}
+              pinnedIds={teamwork.pinnedIds}
+              onTogglePin={teamwork.togglePin}
               panelLeft={githubOpen ? 480 : 30}
             />
           )}
