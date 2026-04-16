@@ -93,6 +93,37 @@ export const useGitHubNotifications = () => {
     [reload],
   );
 
+  const markAllRead = useCallback(
+    async (threadIds) => {
+      const idSet = new Set(threadIds.map(String));
+      setNotifications((prev) =>
+        prev.map((n) => (idSet.has(String(n.id)) ? { ...n, unread: false } : n)),
+      );
+      try {
+        await Promise.all(threadIds.map(markThreadRead));
+      } catch {
+        reload();
+      }
+    },
+    [reload],
+  );
+
+  const deleteAll = useCallback(
+    async (threadIds) => {
+      const idSet = new Set(threadIds);
+      idSet.forEach((id) => dismissedRef.current.add(id));
+      saveDismissed(dismissedRef.current);
+      setNotifications((prev) => prev.filter((n) => !idSet.has(n.id)));
+      setNoiseNotifications((prev) => prev.filter((n) => !idSet.has(n.id)));
+      try {
+        await Promise.all(threadIds.map(markThreadDone));
+      } catch {
+        reload();
+      }
+    },
+    [reload],
+  );
+
   const [prs, setPrs] = useState({ mine: [], reviewRequests: [] });
 
   const loadPRs = useCallback(async () => {
@@ -151,6 +182,8 @@ export const useGitHubNotifications = () => {
     reload,
     markRead,
     markDone,
+    markAllRead,
+    deleteAll,
     loadNoise,
     prs,
     loadPRs,

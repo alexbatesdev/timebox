@@ -189,54 +189,178 @@ function TierSection({
   items,
   defaultExpanded = true,
   onMarkRead,
+  onMarkAllRead,
+  onDeleteAll,
   confirmDeleteId,
   onConfirmDelete,
 }) {
   const [collapsed, setCollapsed] = useState(!defaultExpanded);
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
+  const deleteAllTimeoutRef = useRef(null);
   const unread = items.filter((n) => n.unread).length;
   const read = items.length - unread;
+
+  useEffect(() => {
+    return () => clearTimeout(deleteAllTimeoutRef.current);
+  }, []);
+
+  const handleDeleteAll = () => {
+    if (confirmDeleteAll) {
+      clearTimeout(deleteAllTimeoutRef.current);
+      setConfirmDeleteAll(false);
+      onDeleteAll(items.map((n) => n.id));
+    } else {
+      setConfirmDeleteAll(true);
+      deleteAllTimeoutRef.current = setTimeout(
+        () => setConfirmDeleteAll(false),
+        3000,
+      );
+    }
+  };
+
   return (
     <div style={{ marginBottom: "4px" }}>
-      <button
-        onClick={() => items.length > 0 && setCollapsed(!collapsed)}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "6px",
-          width: "100%",
-          padding: "6px 16px",
-          background: "none",
-          border: "none",
-          cursor: items.length > 0 ? "pointer" : "default",
-          fontFamily: "inherit",
-        }}
+      <div
+        style={{ display: "flex", alignItems: "center", padding: "6px 16px" }}
       >
-        <span style={{ fontSize: "9px", color: "#6b7280" }}>
-          {items.length === 0 ? "◦" : collapsed ? "▶" : "▼"}
-        </span>
-        <span style={{ fontSize: "11px", color: "#9ca3af", fontWeight: "600" }}>
-          {title}
-        </span>
-        <span style={{ fontSize: "9px", color: "#4b5563" }}>
-          {unread > 0 && (
-            <span
+        <button
+          onClick={() => items.length > 0 && setCollapsed(!collapsed)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            flex: 1,
+            background: "none",
+            border: "none",
+            cursor: items.length > 0 ? "pointer" : "default",
+            fontFamily: "inherit",
+            padding: 0,
+          }}
+        >
+          <span style={{ fontSize: "9px", color: "#6b7280" }}>
+            {items.length === 0 ? "◦" : collapsed ? "▶" : "▼"}
+          </span>
+          <span
+            style={{ fontSize: "11px", color: "#9ca3af", fontWeight: "600" }}
+          >
+            {title}
+          </span>
+          <span style={{ fontSize: "9px", color: "#4b5563" }}>
+            {unread > 0 && (
+              <span
+                style={{
+                  color: "#e5e7eb",
+                  padding: "0 4px",
+                  borderRadius: "9999px",
+                  background: "#333",
+                }}
+              >
+                {unread}
+              </span>
+            )}
+            {unread > 0 && read > 0 && " "}
+            {read > 0 && <span style={{ color: "#6b7280" }}>{read} read</span>}
+            {items.length === 0 && (
+              <span style={{ color: "#4b5563" }}>empty</span>
+            )}
+          </span>
+        </button>
+        {items.length > 0 && (
+          <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
+            {unread > 0 && (
+              <button
+                onClick={() => {
+                  onMarkAllRead(items.filter((n) => n.unread).map((n) => n.id));
+                }}
+                title="Mark all as read"
+                style={{
+                  background: "none",
+                  border: "1px solid #333",
+                  borderRadius: "4px",
+                  color: "#22c55e",
+                  cursor: "pointer",
+                  fontSize: "10px",
+                  padding: "2px 5px",
+                  fontFamily: "inherit",
+                  lineHeight: 1,
+                  position: "relative",
+                  width: "20px",
+                  height: "18px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <span
+                  style={{
+                    position: "relative",
+                    left: "33%",
+                  }}
+                >
+                  ✓
+                </span>
+                <span
+                  style={{
+                    position: "relative",
+                    right: "33%",
+                    opacity: 0.75,
+                  }}
+                >
+                  ✓
+                </span>
+              </button>
+            )}
+            <button
+              onClick={handleDeleteAll}
+              title="Delete all"
               style={{
-                color: "#e5e7eb",
-                padding: "0 4px",
-                borderRadius: "9999px",
-                background: "#333",
+                background: confirmDeleteAll ? "#dc2626" : "none",
+                border: confirmDeleteAll
+                  ? "1px solid #dc2626"
+                  : "1px solid #333",
+                borderRadius: "4px",
+                color: confirmDeleteAll ? "#fff" : "#dc2626",
+                cursor: "pointer",
+                fontSize: "10px",
+                padding: "2px 5px",
+                fontFamily: "inherit",
+                transition: "0.15s ease",
+                lineHeight: 1,
+                position: "relative",
+                width: "20px",
+                height: "18px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
-              {unread}
-            </span>
-          )}
-          {unread > 0 && read > 0 && " "}
-          {read > 0 && <span style={{ color: "#6b7280" }}>{read} read</span>}
-          {items.length === 0 && (
-            <span style={{ color: "#4b5563" }}>empty</span>
-          )}
-        </span>
-      </button>
+              {confirmDeleteAll ? (
+                <span>Sure?</span>
+              ) : (
+                <>
+                  <span
+                    style={{
+                      position: "relative",
+                      left: "33%",
+                    }}
+                  >
+                    ✕
+                  </span>
+                  <span
+                    style={{
+                      position: "relative",
+                      right: "33%",
+                      opacity: 0.75,
+                    }}
+                  >
+                    ✕
+                  </span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
+      </div>
       {!collapsed && (
         <div style={{ padding: "0 16px" }}>
           {items.map((n) => (
@@ -302,11 +426,25 @@ function PRItem({ pr }) {
           </span>
         )}
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "2px" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          marginTop: "2px",
+        }}
+      >
         <span style={{ fontSize: "10px", color: "#6b7280" }}>#{pr.number}</span>
         <span style={{ fontSize: "10px", color: "#4b5563" }}>{pr.author}</span>
         <span style={{ fontSize: "10px", color: "#4b5563" }}>{pr.repo}</span>
-        <span style={{ fontSize: "10px", fontWeight: "700", color: "#6b7280", marginLeft: "auto" }}>
+        <span
+          style={{
+            fontSize: "10px",
+            fontWeight: "700",
+            color: "#6b7280",
+            marginLeft: "auto",
+          }}
+        >
           {relativeTime(pr.updatedAt)}
         </span>
       </div>
@@ -318,7 +456,15 @@ function RepoGroup({ repo, prs, onHide }) {
   const [collapsed, setCollapsed] = useState(false);
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 0", marginTop: "4px" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          padding: "4px 0",
+          marginTop: "4px",
+        }}
+      >
         <button
           onClick={() => setCollapsed(!collapsed)}
           style={{
@@ -333,10 +479,10 @@ function RepoGroup({ repo, prs, onHide }) {
         >
           {collapsed ? "▶" : "▼"}
         </button>
-        <span style={{ fontSize: "10px", color: "#6b7280", fontWeight: "600" }}>{repo}</span>
-        <span style={{ fontSize: "9px", color: "#4b5563" }}>
-          {prs.length}
+        <span style={{ fontSize: "10px", color: "#6b7280", fontWeight: "600" }}>
+          {repo}
         </span>
+        <span style={{ fontSize: "9px", color: "#4b5563" }}>{prs.length}</span>
         <button
           onClick={onHide}
           title={`Hide ${repo}`}
@@ -354,14 +500,18 @@ function RepoGroup({ repo, prs, onHide }) {
           hide
         </button>
       </div>
-      {!collapsed && prs.map((pr) => (
-        <PRItem key={pr.id} pr={pr} />
-      ))}
+      {!collapsed && prs.map((pr) => <PRItem key={pr.id} pr={pr} />)}
     </div>
   );
 }
 
-function PRSection({ title, items, hiddenRepos, onToggleRepo, defaultExpanded = true }) {
+function PRSection({
+  title,
+  items,
+  hiddenRepos,
+  onToggleRepo,
+  defaultExpanded = true,
+}) {
   const [collapsed, setCollapsed] = useState(!defaultExpanded);
   const visible = items.filter((pr) => !hiddenRepos.has(pr.repo));
   const hiddenCount = items.length - visible.length;
@@ -392,10 +542,19 @@ function PRSection({ title, items, hiddenRepos, onToggleRepo, defaultExpanded = 
         <span style={{ fontSize: "9px", color: "#6b7280" }}>
           {items.length === 0 ? "◦" : collapsed ? "▶" : "▼"}
         </span>
-        <span style={{ fontSize: "11px", color: "#9ca3af", fontWeight: "600" }}>{title}</span>
+        <span style={{ fontSize: "11px", color: "#9ca3af", fontWeight: "600" }}>
+          {title}
+        </span>
         <span style={{ fontSize: "9px", color: "#4b5563" }}>
           {visible.length > 0 && (
-            <span style={{ color: "#e5e7eb", padding: "0 4px", borderRadius: "9999px", background: "#333" }}>
+            <span
+              style={{
+                color: "#e5e7eb",
+                padding: "0 4px",
+                borderRadius: "9999px",
+                background: "#333",
+              }}
+            >
               {visible.length}
             </span>
           )}
@@ -404,13 +563,20 @@ function PRSection({ title, items, hiddenRepos, onToggleRepo, defaultExpanded = 
               {hiddenCount} hidden
             </span>
           )}
-          {items.length === 0 && <span style={{ color: "#4b5563" }}>empty</span>}
+          {items.length === 0 && (
+            <span style={{ color: "#4b5563" }}>empty</span>
+          )}
         </span>
       </button>
       {!collapsed && visible.length > 0 && (
         <div style={{ padding: "0 16px" }}>
           {repos.map((repo) => (
-            <RepoGroup key={repo} repo={repo} prs={byRepo[repo]} onHide={() => onToggleRepo(repo)} />
+            <RepoGroup
+              key={repo}
+              repo={repo}
+              prs={byRepo[repo]}
+              onHide={() => onToggleRepo(repo)}
+            />
           ))}
         </div>
       )}
@@ -418,7 +584,12 @@ function PRSection({ title, items, hiddenRepos, onToggleRepo, defaultExpanded = 
   );
 }
 
-function CollapsibleSection({ title, detail, children, defaultExpanded = true }) {
+function CollapsibleSection({
+  title,
+  detail,
+  children,
+  defaultExpanded = true,
+}) {
   const [collapsed, setCollapsed] = useState(!defaultExpanded);
   return (
     <div style={{ borderBottom: "1px solid #252525" }}>
@@ -439,8 +610,12 @@ function CollapsibleSection({ title, detail, children, defaultExpanded = true })
         <span style={{ fontSize: "10px", color: "#6b7280" }}>
           {collapsed ? "▶" : "▼"}
         </span>
-        <span style={{ fontSize: "13px", color: "#e5e7eb", fontWeight: "700" }}>{title}</span>
-        {detail && <span style={{ fontSize: "10px", color: "#6b7280" }}>{detail}</span>}
+        <span style={{ fontSize: "13px", color: "#e5e7eb", fontWeight: "700" }}>
+          {title}
+        </span>
+        {detail && (
+          <span style={{ fontSize: "10px", color: "#6b7280" }}>{detail}</span>
+        )}
       </button>
       {!collapsed && children}
     </div>
@@ -455,6 +630,8 @@ export default function GitHubPanel({
   loading,
   onMarkRead,
   onMarkDone,
+  onMarkAllRead,
+  onDeleteAll,
   onLoadNoise,
   prs,
   onLoadPRs,
@@ -608,14 +785,25 @@ export default function GitHubPanel({
         {/* Content */}
         <div style={{ flex: 1, overflowY: "auto" }}>
           {loading && (
-            <div style={{ padding: "16px", color: "#6b7280", fontSize: "13px", textAlign: "center" }}>
+            <div
+              style={{
+                padding: "16px",
+                color: "#6b7280",
+                fontSize: "13px",
+                textAlign: "center",
+              }}
+            >
               Loading...
             </div>
           )}
           <CollapsibleSection
             title="Notifications"
             detail={(() => {
-              const all = [...grouped.newStuff, ...grouped.updates, ...grouped.noise];
+              const all = [
+                ...grouped.newStuff,
+                ...grouped.updates,
+                ...grouped.noise,
+              ];
               const unread = all.filter((n) => n.unread).length;
               const read = all.length - unread;
               const parts = [];
@@ -629,6 +817,8 @@ export default function GitHubPanel({
               items={grouped.newStuff}
               defaultExpanded
               onMarkRead={onMarkRead}
+              onMarkAllRead={onMarkAllRead}
+              onDeleteAll={onDeleteAll}
               confirmDeleteId={confirmDeleteId}
               onConfirmDelete={handleConfirmDelete}
             />
@@ -637,6 +827,8 @@ export default function GitHubPanel({
               items={grouped.updates}
               defaultExpanded
               onMarkRead={onMarkRead}
+              onMarkAllRead={onMarkAllRead}
+              onDeleteAll={onDeleteAll}
               confirmDeleteId={confirmDeleteId}
               onConfirmDelete={handleConfirmDelete}
             />
@@ -645,6 +837,8 @@ export default function GitHubPanel({
               items={grouped.noise}
               defaultExpanded={false}
               onMarkRead={onMarkRead}
+              onMarkAllRead={onMarkAllRead}
+              onDeleteAll={onDeleteAll}
               confirmDeleteId={confirmDeleteId}
               onConfirmDelete={handleConfirmDelete}
             />
@@ -653,13 +847,24 @@ export default function GitHubPanel({
             title="Pull Requests"
             detail={(() => {
               const parts = [];
-              if (prs.reviewRequests.length > 0) parts.push(`${prs.reviewRequests.length} awaiting review`);
+              if (prs.reviewRequests.length > 0)
+                parts.push(`${prs.reviewRequests.length} awaiting review`);
               if (prs.mine.length > 0) parts.push(`${prs.mine.length} open`);
               return parts.join(", ") || null;
             })()}
           >
-            <PRSection title="Awaiting My Review" items={prs.reviewRequests} hiddenRepos={hiddenRepos} onToggleRepo={toggleHiddenRepo} />
-            <PRSection title="My Open PRs" items={prs.mine} hiddenRepos={hiddenRepos} onToggleRepo={toggleHiddenRepo} />
+            <PRSection
+              title="Awaiting My Review"
+              items={prs.reviewRequests}
+              hiddenRepos={hiddenRepos}
+              onToggleRepo={toggleHiddenRepo}
+            />
+            <PRSection
+              title="My Open PRs"
+              items={prs.mine}
+              hiddenRepos={hiddenRepos}
+              onToggleRepo={toggleHiddenRepo}
+            />
             {hiddenRepos.size > 0 && (
               <button
                 onClick={unhideAllRepos}
@@ -674,7 +879,8 @@ export default function GitHubPanel({
                   fontFamily: "inherit",
                 }}
               >
-                Show {hiddenRepos.size} hidden repo{hiddenRepos.size > 1 ? "s" : ""}
+                Show {hiddenRepos.size} hidden repo
+                {hiddenRepos.size > 1 ? "s" : ""}
               </button>
             )}
           </CollapsibleSection>

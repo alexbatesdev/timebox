@@ -614,6 +614,8 @@ export default function App() {
               loading={github.loading}
               onMarkRead={github.markRead}
               onMarkDone={github.markDone}
+              onMarkAllRead={github.markAllRead}
+              onDeleteAll={github.deleteAll}
               onLoadNoise={github.loadNoise}
               prs={github.prs}
               onLoadPRs={github.loadPRs}
