@@ -57,7 +57,7 @@ function reasonColor(reason) {
   return colors[reason] || "#4b5563";
 }
 
-function NotificationItem({ n, onMarkRead, confirmDeleteId, onConfirmDelete }) {
+function NotificationItem({ n, onMarkRead, confirmDeleteId, onConfirmDelete, pinned, onTogglePin }) {
   const url = notificationUrl(n);
 
   return (
@@ -72,7 +72,7 @@ function NotificationItem({ n, onMarkRead, confirmDeleteId, onConfirmDelete }) {
             flex: 1,
             minWidth: 0,
             fontSize: "12px",
-            color: n.unread ? "#d1d5db" : "#9ba0ab",
+            color: pinned ? "#fde047" : n.unread ? "#d1d5db" : "#9ba0ab",
             fontWeight: n.unread ? "600" : "400",
             whiteSpace: "nowrap",
             overflow: "hidden",
@@ -140,6 +140,22 @@ function NotificationItem({ n, onMarkRead, confirmDeleteId, onConfirmDelete }) {
             marginLeft: "auto",
           }}
         >
+          <button
+            onClick={() => onTogglePin(n.id)}
+            title={pinned ? "Unpin" : "Pin"}
+            style={{
+              background: "none",
+              border: "1px solid #333",
+              borderRadius: "4px",
+              color: pinned ? "#fde047" : "#4b5563",
+              cursor: "pointer",
+              fontSize: "10px",
+              padding: "2px 5px",
+              fontFamily: "inherit",
+            }}
+          >
+            {pinned ? "★" : "☆"}
+          </button>
           {n.unread && (
             <button
               onClick={() => onMarkRead(n.id)}
@@ -193,6 +209,8 @@ function TierSection({
   onDeleteAll,
   confirmDeleteId,
   onConfirmDelete,
+  pinnedIds,
+  onTogglePin,
 }) {
   const [collapsed, setCollapsed] = useState(!defaultExpanded);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
@@ -370,6 +388,8 @@ function TierSection({
               onMarkRead={onMarkRead}
               confirmDeleteId={confirmDeleteId}
               onConfirmDelete={onConfirmDelete}
+              pinned={pinnedIds?.has(n.id)}
+              onTogglePin={onTogglePin}
             />
           ))}
         </div>
@@ -387,7 +407,7 @@ const saveHiddenRepos = (set) => {
   localStorage.setItem(HIDDEN_REPOS_KEY, JSON.stringify([...set]));
 };
 
-function PRItem({ pr }) {
+function PRItem({ pr, pinned, onTogglePin }) {
   return (
     <div style={{ borderBottom: "1px solid #1a1a1a", padding: "6px 0" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -399,7 +419,7 @@ function PRItem({ pr }) {
             flex: 1,
             minWidth: 0,
             fontSize: "12px",
-            color: "#d1d5db",
+            color: pinned ? "#fde047" : "#d1d5db",
             fontWeight: "600",
             whiteSpace: "nowrap",
             overflow: "hidden",
@@ -447,12 +467,28 @@ function PRItem({ pr }) {
         >
           {relativeTime(pr.updatedAt)}
         </span>
+        <button
+          onClick={() => onTogglePin(pr.id)}
+          title={pinned ? "Unpin" : "Pin"}
+          style={{
+            background: "none",
+            border: "1px solid #333",
+            borderRadius: "4px",
+            color: pinned ? "#fde047" : "#4b5563",
+            cursor: "pointer",
+            fontSize: "10px",
+            padding: "2px 5px",
+            fontFamily: "inherit",
+          }}
+        >
+          {pinned ? "★" : "☆"}
+        </button>
       </div>
     </div>
   );
 }
 
-function RepoGroup({ repo, prs, onHide }) {
+function RepoGroup({ repo, prs, onHide, pinnedIds, onTogglePin }) {
   const [collapsed, setCollapsed] = useState(false);
   return (
     <div>
@@ -500,7 +536,7 @@ function RepoGroup({ repo, prs, onHide }) {
           hide
         </button>
       </div>
-      {!collapsed && prs.map((pr) => <PRItem key={pr.id} pr={pr} />)}
+      {!collapsed && prs.map((pr) => <PRItem key={pr.id} pr={pr} pinned={pinnedIds?.has(pr.id)} onTogglePin={onTogglePin} />)}
     </div>
   );
 }
@@ -510,6 +546,8 @@ function PRSection({
   items,
   hiddenRepos,
   onToggleRepo,
+  pinnedIds,
+  onTogglePin,
   defaultExpanded = true,
 }) {
   const [collapsed, setCollapsed] = useState(!defaultExpanded);
@@ -576,6 +614,8 @@ function PRSection({
               repo={repo}
               prs={byRepo[repo]}
               onHide={() => onToggleRepo(repo)}
+              pinnedIds={pinnedIds}
+              onTogglePin={onTogglePin}
             />
           ))}
         </div>
@@ -632,6 +672,8 @@ export default function GitHubPanel({
   onMarkDone,
   onMarkAllRead,
   onDeleteAll,
+  pinnedIds,
+  onTogglePin,
   onLoadNoise,
   prs,
   onLoadPRs,
@@ -821,6 +863,8 @@ export default function GitHubPanel({
               onDeleteAll={onDeleteAll}
               confirmDeleteId={confirmDeleteId}
               onConfirmDelete={handleConfirmDelete}
+              pinnedIds={pinnedIds}
+              onTogglePin={onTogglePin}
             />
             <TierSection
               title="Updates"
@@ -831,6 +875,8 @@ export default function GitHubPanel({
               onDeleteAll={onDeleteAll}
               confirmDeleteId={confirmDeleteId}
               onConfirmDelete={handleConfirmDelete}
+              pinnedIds={pinnedIds}
+              onTogglePin={onTogglePin}
             />
             <TierSection
               title="Noise"
@@ -841,6 +887,8 @@ export default function GitHubPanel({
               onDeleteAll={onDeleteAll}
               confirmDeleteId={confirmDeleteId}
               onConfirmDelete={handleConfirmDelete}
+              pinnedIds={pinnedIds}
+              onTogglePin={onTogglePin}
             />
           </CollapsibleSection>
           <CollapsibleSection
@@ -859,12 +907,16 @@ export default function GitHubPanel({
               items={prs.reviewRequests}
               hiddenRepos={hiddenRepos}
               onToggleRepo={toggleHiddenRepo}
+              pinnedIds={pinnedIds}
+              onTogglePin={onTogglePin}
             />
             <PRSection
               title="My Open PRs"
               items={prs.mine}
               hiddenRepos={hiddenRepos}
               onToggleRepo={toggleHiddenRepo}
+              pinnedIds={pinnedIds}
+              onTogglePin={onTogglePin}
             />
             {hiddenRepos.size > 0 && (
               <button

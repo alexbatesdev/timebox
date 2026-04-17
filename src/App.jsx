@@ -618,6 +618,8 @@ export default function App() {
               onMarkDone={github.markDone}
               onMarkAllRead={github.markAllRead}
               onDeleteAll={github.deleteAll}
+              pinnedIds={github.pinnedIds}
+              onTogglePin={github.togglePin}
               onLoadNoise={github.loadNoise}
               prs={github.prs}
               onLoadPRs={github.loadPRs}

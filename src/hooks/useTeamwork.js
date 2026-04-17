@@ -6,15 +6,7 @@ import {
   fetchWorkflowStages,
   moveTaskToStage,
 } from "../teamwork/api.js";
-
-const PINNED_KEY = "timebox-tw-pinned";
-const loadPinned = () => {
-  const raw = localStorage.getItem(PINNED_KEY);
-  return raw ? new Set(JSON.parse(raw)) : new Set();
-};
-const savePinned = (set) => {
-  localStorage.setItem(PINNED_KEY, JSON.stringify([...set]));
-};
+import { usePinned } from "./usePinned.js";
 
 export const useTeamwork = () => {
   const configured = isTeamworkConfigured();
@@ -23,7 +15,7 @@ export const useTeamwork = () => {
   const [loading, setLoading] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [workflowData, setWorkflowData] = useState({});
-  const [pinnedIds, setPinnedIds] = useState(loadPinned);
+  const { pinnedIds, togglePin } = usePinned("timebox-tw-pinned");
 
   const reload = useCallback(async () => {
     if (!configured) return;
@@ -132,16 +124,6 @@ export const useTeamwork = () => {
     },
     [workflowData, updateInTree, reload],
   );
-
-  const togglePin = useCallback((taskId) => {
-    setPinnedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(taskId)) next.delete(taskId);
-      else next.add(taskId);
-      savePinned(next);
-      return next;
-    });
-  }, []);
 
   const filtered = selectedProjectId
     ? tasks.filter((t) => String(t.projectId) === String(selectedProjectId))

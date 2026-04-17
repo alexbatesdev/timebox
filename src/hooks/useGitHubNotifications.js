@@ -9,6 +9,7 @@ import {
   markThreadDone,
   classifyTier,
 } from "../github/api.js";
+import { usePinned } from "./usePinned.js";
 
 const POLL_INTERVAL = 60_000;
 const DISMISSED_KEY = "timebox-gh-dismissed";
@@ -24,6 +25,7 @@ const saveDismissed = (set) => {
 
 export const useGitHubNotifications = () => {
   const configured = isGitHubConfigured();
+  const { pinnedIds, togglePin } = usePinned("timebox-gh-pinned");
   const [notifications, setNotifications] = useState([]);
   const [noiseNotifications, setNoiseNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -161,12 +163,29 @@ export const useGitHubNotifications = () => {
     for (const n of noiseNotifications) {
       if (!seenIds.has(n.id)) noise.push(n);
     }
-    const byRecent = (a, b) => new Date(b.updated_at) - new Date(a.updated_at);
-    newStuff.sort(byRecent);
-    updates.sort(byRecent);
-    noise.sort(byRecent);
+    const byPinnedThenRecent = (a, b) => {
+      const ap = pinnedIds.has(a.id) ? 0 : 1;
+      const bp = pinnedIds.has(b.id) ? 0 : 1;
+      if (ap !== bp) return ap - bp;
+      return new Date(b.updated_at) - new Date(a.updated_at);
+    };
+    newStuff.sort(byPinnedThenRecent);
+    updates.sort(byPinnedThenRecent);
+    noise.sort(byPinnedThenRecent);
     return { newStuff, updates, noise };
-  }, [notifications, noiseNotifications]);
+  }, [notifications, noiseNotifications, pinnedIds]);
+
+  const sortedPrs = useMemo(() => {
+    const byPinned = (a, b) => {
+      const ap = pinnedIds.has(a.id) ? 0 : 1;
+      const bp = pinnedIds.has(b.id) ? 0 : 1;
+      return ap - bp;
+    };
+    return {
+      mine: [...prs.mine].sort(byPinned),
+      reviewRequests: [...prs.reviewRequests].sort(byPinned),
+    };
+  }, [prs, pinnedIds]);
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => n.unread).length,
@@ -184,8 +203,10 @@ export const useGitHubNotifications = () => {
     markDone,
     markAllRead,
     deleteAll,
+    pinnedIds,
+    togglePin,
     loadNoise,
-    prs,
+    prs: sortedPrs,
     loadPRs,
   };
 };
