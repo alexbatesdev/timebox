@@ -69,9 +69,9 @@ export const useGitHubNotifications = () => {
 
   const markRead = useCallback(
     async (threadId) => {
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === threadId ? { ...n, unread: false } : n)),
-      );
+      const mark = (n) => (n.id === threadId ? { ...n, unread: false } : n);
+      setNotifications((prev) => prev.map(mark));
+      setNoiseNotifications((prev) => prev.map(mark));
       try {
         await markThreadRead(threadId);
       } catch {
@@ -98,9 +98,9 @@ export const useGitHubNotifications = () => {
   const markAllRead = useCallback(
     async (threadIds) => {
       const idSet = new Set(threadIds.map(String));
-      setNotifications((prev) =>
-        prev.map((n) => (idSet.has(String(n.id)) ? { ...n, unread: false } : n)),
-      );
+      const markUnread = (n) => (idSet.has(String(n.id)) ? { ...n, unread: false } : n);
+      setNotifications((prev) => prev.map(markUnread));
+      setNoiseNotifications((prev) => prev.map(markUnread));
       try {
         await Promise.all(threadIds.map(markThreadRead));
       } catch {
