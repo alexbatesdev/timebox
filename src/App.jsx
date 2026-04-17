@@ -739,6 +739,8 @@ export default function App() {
         onAdd={looseEnds.addItem}
         onComplete={looseEnds.completeItem}
         onDelete={looseEnds.deleteItem}
+        pinnedIds={looseEnds.pinnedIds}
+        onTogglePin={looseEnds.togglePin}
       />
     </div>
   );

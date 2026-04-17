@@ -8,6 +8,8 @@ export default function LooseEndsPanel({
   onAdd,
   onComplete,
   onDelete,
+  pinnedIds,
+  onTogglePin,
 }) {
   const [input, setInput] = useState("");
 
@@ -212,7 +214,7 @@ export default function LooseEndsPanel({
                 style={{
                   flex: 1,
                   fontSize: "13px",
-                  color: "#d1d5db",
+                  color: pinnedIds?.has(item.id) ? "#fde047" : "#d1d5db",
                   whiteSpace: "pre-wrap",
                   wordBreak: "break-word",
                   textAlign: "left",
@@ -220,6 +222,22 @@ export default function LooseEndsPanel({
               >
                 {item.title}
               </span>
+              <button
+                onClick={() => onTogglePin(item.id)}
+                title={pinnedIds?.has(item.id) ? "Unpin" : "Pin"}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: pinnedIds?.has(item.id) ? "#fde047" : "#4b5563",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  padding: "0 2px",
+                  flexShrink: 0,
+                  marginTop: "1px",
+                }}
+              >
+                {pinnedIds?.has(item.id) ? "★" : "☆"}
+              </button>
               <button
                 onClick={() => onDelete(item.id)}
                 title="Delete"

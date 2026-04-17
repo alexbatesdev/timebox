@@ -6,6 +6,7 @@ import {
   completeLooseEnd,
   deleteLooseEnd,
 } from "../notion/looseEnds.js";
+import { usePinned } from "./usePinned.js";
 
 const STORAGE_KEY = "timebox-loose-ends";
 
@@ -30,6 +31,7 @@ export const useLooseEnds = () => {
   const notionEnabled = isLooseEndsConfigured();
   const [items, setItems] = useState(() => loadFromStorage());
   const [loading, setLoading] = useState(false);
+  const { pinnedIds, togglePin } = usePinned("timebox-le-pinned");
 
   const persist = useCallback((next) => {
     setItems(next);
@@ -101,5 +103,11 @@ export const useLooseEnds = () => {
     [notionEnabled, persist, reload],
   );
 
-  return { items, loading, addItem, completeItem, deleteItem, reload };
+  const sortedItems = [...items].sort((a, b) => {
+    const ap = pinnedIds.has(a.id) ? 0 : 1;
+    const bp = pinnedIds.has(b.id) ? 0 : 1;
+    return ap - bp;
+  });
+
+  return { items: sortedItems, pinnedIds, togglePin, loading, addItem, completeItem, deleteItem, reload };
 };
