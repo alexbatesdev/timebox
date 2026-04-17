@@ -116,7 +116,7 @@ export default function App() {
   const reloadLooseEnds = looseEnds.reload;
   const reloadGitHub = github.reload;
   useEffect(() => {
-    const onVisible = () => {
+    const checkAndReload = () => {
       if (document.visibilityState !== "visible") return;
       reloadGitHub();
       if (todayKey() !== loadedDateKey.current) {
@@ -126,8 +126,13 @@ export default function App() {
         reloadLooseEnds();
       }
     };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
+    const onFocus = () => checkAndReload();
+    document.addEventListener("visibilitychange", checkAndReload);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      document.removeEventListener("visibilitychange", checkAndReload);
+      window.removeEventListener("focus", onFocus);
+    };
   }, [reloadScheduleFromConfig, reloadTeamwork, reloadLooseEnds, reloadGitHub]);
 
   const getCurIdx = () => {
