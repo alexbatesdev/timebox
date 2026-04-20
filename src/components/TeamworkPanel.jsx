@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { taskUrl } from "../teamwork/api.js";
+import { useNotes } from "../hooks/useNotes.js";
+import NotesSection from "./NotesSection.jsx";
 
 const renderDescription = (text) => {
   if (!text) return null;
@@ -312,6 +314,8 @@ function TaskNode({
   onCloseMenu,
   pinnedIds,
   onTogglePin,
+  getNote,
+  setNote,
 }) {
   const pinned = pinnedIds?.has(task.id);
   return (
@@ -342,6 +346,10 @@ function TaskNode({
           >
             {pinned ? "★ Unpin" : "☆ Pin"}
           </button>
+          <NotesSection
+            noteText={getNote(task.id)}
+            onNoteChange={(text) => setNote(task.id, text)}
+          />
           <DescriptionCard task={task} onToggle={onToggleDescExpanded} />
           {task.hasSubtasks && !task.subtasks && (
             <div
@@ -368,6 +376,8 @@ function TaskNode({
               onCloseMenu={onCloseMenu}
               pinnedIds={pinnedIds}
               onTogglePin={onTogglePin}
+              getNote={getNote}
+              setNote={setNote}
             />
           ))}
         </div>
@@ -393,6 +403,7 @@ export default function TeamworkPanel({
   onTogglePin,
   panelLeft = 30,
 }) {
+  const { getNote, setNote } = useNotes("timebox-tw-notes");
   const [menuTaskId, setMenuTaskId] = useState(null);
   const findTask = (list) => {
     for (const t of list) {
@@ -578,6 +589,8 @@ export default function TeamworkPanel({
                 onCloseMenu={() => setMenuTaskId(null)}
                 pinnedIds={pinnedIds}
                 onTogglePin={onTogglePin}
+                getNote={getNote}
+                setNote={setNote}
               />
             </div>
           ))}

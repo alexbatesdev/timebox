@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { notificationUrl } from "../github/api.js";
+import { useNotes } from "../hooks/useNotes.js";
+import NotesSection from "./NotesSection.jsx";
 
 const GITHUB_SVG = (
   <svg viewBox="0 0 16 16" width="16" height="16" fill="#9ca3af">
@@ -57,13 +59,28 @@ function reasonColor(reason) {
   return colors[reason] || "#4b5563";
 }
 
-function NotificationItem({ n, onMarkRead, confirmDeleteId, onConfirmDelete, pinned, onTogglePin }) {
+function NotificationItem({ n, onMarkRead, confirmDeleteId, onConfirmDelete, pinned, onTogglePin, expanded, onToggleExpand, noteText, onNoteChange }) {
   const url = notificationUrl(n);
 
   return (
     <div style={{ borderBottom: "1px solid #1a1a1a", padding: "6px 0" }}>
       {/* Row 1: title */}
       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+        <button
+          onClick={() => onToggleExpand(n.id)}
+          style={{
+            background: "none",
+            border: "none",
+            color: "#6b7280",
+            cursor: "pointer",
+            fontSize: "10px",
+            padding: "0 2px",
+            flexShrink: 0,
+            width: "14px",
+          }}
+        >
+          {expanded ? "▼" : "▶"}
+        </button>
         <a
           href={url || "#"}
           target="_blank"
@@ -196,6 +213,11 @@ function NotificationItem({ n, onMarkRead, confirmDeleteId, onConfirmDelete, pin
           </button>
         </div>
       </div>
+      {expanded && (
+        <div style={{ paddingLeft: "20px", marginTop: "4px" }}>
+          <NotesSection noteText={noteText} onNoteChange={onNoteChange} />
+        </div>
+      )}
     </div>
   );
 }
@@ -211,6 +233,10 @@ function TierSection({
   onConfirmDelete,
   pinnedIds,
   onTogglePin,
+  expandedId,
+  onToggleExpand,
+  getNote,
+  setNote,
 }) {
   const [collapsed, setCollapsed] = useState(!defaultExpanded);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
@@ -390,6 +416,10 @@ function TierSection({
               onConfirmDelete={onConfirmDelete}
               pinned={pinnedIds?.has(n.id)}
               onTogglePin={onTogglePin}
+              expanded={expandedId === n.id}
+              onToggleExpand={onToggleExpand}
+              noteText={getNote(n.id)}
+              onNoteChange={(text) => setNote(n.id, text)}
             />
           ))}
         </div>
@@ -407,10 +437,25 @@ const saveHiddenRepos = (set) => {
   localStorage.setItem(HIDDEN_REPOS_KEY, JSON.stringify([...set]));
 };
 
-function PRItem({ pr, pinned, onTogglePin }) {
+function PRItem({ pr, pinned, onTogglePin, expanded, onToggleExpand, noteText, onNoteChange }) {
   return (
     <div style={{ borderBottom: "1px solid #1a1a1a", padding: "6px 0" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+        <button
+          onClick={() => onToggleExpand(pr.id)}
+          style={{
+            background: "none",
+            border: "none",
+            color: "#6b7280",
+            cursor: "pointer",
+            fontSize: "10px",
+            padding: "0 2px",
+            flexShrink: 0,
+            width: "14px",
+          }}
+        >
+          {expanded ? "▼" : "▶"}
+        </button>
         <a
           href={pr.url}
           target="_blank"
@@ -484,11 +529,16 @@ function PRItem({ pr, pinned, onTogglePin }) {
           {pinned ? "★" : "☆"}
         </button>
       </div>
+      {expanded && (
+        <div style={{ paddingLeft: "20px", marginTop: "4px" }}>
+          <NotesSection noteText={noteText} onNoteChange={onNoteChange} />
+        </div>
+      )}
     </div>
   );
 }
 
-function RepoGroup({ repo, prs, onHide, pinnedIds, onTogglePin }) {
+function RepoGroup({ repo, prs, onHide, pinnedIds, onTogglePin, expandedId, onToggleExpand, getNote, setNote }) {
   const [collapsed, setCollapsed] = useState(false);
   return (
     <div>
@@ -536,7 +586,18 @@ function RepoGroup({ repo, prs, onHide, pinnedIds, onTogglePin }) {
           hide
         </button>
       </div>
-      {!collapsed && prs.map((pr) => <PRItem key={pr.id} pr={pr} pinned={pinnedIds?.has(pr.id)} onTogglePin={onTogglePin} />)}
+      {!collapsed && prs.map((pr) => (
+        <PRItem
+          key={pr.id}
+          pr={pr}
+          pinned={pinnedIds?.has(pr.id)}
+          onTogglePin={onTogglePin}
+          expanded={expandedId === pr.id}
+          onToggleExpand={onToggleExpand}
+          noteText={getNote(pr.id)}
+          onNoteChange={(text) => setNote(pr.id, text)}
+        />
+      ))}
     </div>
   );
 }
@@ -548,6 +609,10 @@ function PRSection({
   onToggleRepo,
   pinnedIds,
   onTogglePin,
+  expandedId,
+  onToggleExpand,
+  getNote,
+  setNote,
   defaultExpanded = true,
 }) {
   const [collapsed, setCollapsed] = useState(!defaultExpanded);
@@ -616,6 +681,10 @@ function PRSection({
               onHide={() => onToggleRepo(repo)}
               pinnedIds={pinnedIds}
               onTogglePin={onTogglePin}
+              expandedId={expandedId}
+              onToggleExpand={onToggleExpand}
+              getNote={getNote}
+              setNote={setNote}
             />
           ))}
         </div>
@@ -680,7 +749,13 @@ export default function GitHubPanel({
 }) {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [hiddenRepos, setHiddenRepos] = useState(loadHiddenRepos);
+  const [expandedId, setExpandedId] = useState(null);
+  const { getNote, setNote } = useNotes("timebox-gh-notes");
   const confirmTimeoutRef = useRef(null);
+
+  const handleToggleExpand = (id) => {
+    setExpandedId((prev) => (prev === id ? null : id));
+  };
 
   const toggleHiddenRepo = (repo) => {
     setHiddenRepos((prev) => {
@@ -865,6 +940,10 @@ export default function GitHubPanel({
               onConfirmDelete={handleConfirmDelete}
               pinnedIds={pinnedIds}
               onTogglePin={onTogglePin}
+              expandedId={expandedId}
+              onToggleExpand={handleToggleExpand}
+              getNote={getNote}
+              setNote={setNote}
             />
             <TierSection
               title="Updates"
@@ -877,6 +956,10 @@ export default function GitHubPanel({
               onConfirmDelete={handleConfirmDelete}
               pinnedIds={pinnedIds}
               onTogglePin={onTogglePin}
+              expandedId={expandedId}
+              onToggleExpand={handleToggleExpand}
+              getNote={getNote}
+              setNote={setNote}
             />
             <TierSection
               title="Noise"
@@ -889,6 +972,10 @@ export default function GitHubPanel({
               onConfirmDelete={handleConfirmDelete}
               pinnedIds={pinnedIds}
               onTogglePin={onTogglePin}
+              expandedId={expandedId}
+              onToggleExpand={handleToggleExpand}
+              getNote={getNote}
+              setNote={setNote}
             />
           </CollapsibleSection>
           <CollapsibleSection
@@ -909,6 +996,10 @@ export default function GitHubPanel({
               onToggleRepo={toggleHiddenRepo}
               pinnedIds={pinnedIds}
               onTogglePin={onTogglePin}
+              expandedId={expandedId}
+              onToggleExpand={handleToggleExpand}
+              getNote={getNote}
+              setNote={setNote}
             />
             <PRSection
               title="My Open PRs"
@@ -917,6 +1008,10 @@ export default function GitHubPanel({
               onToggleRepo={toggleHiddenRepo}
               pinnedIds={pinnedIds}
               onTogglePin={onTogglePin}
+              expandedId={expandedId}
+              onToggleExpand={handleToggleExpand}
+              getNote={getNote}
+              setNote={setNote}
             />
             {hiddenRepos.size > 0 && (
               <button
