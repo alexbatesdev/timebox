@@ -3,6 +3,7 @@ import {
   isTeamworkConfigured,
   fetchMyTasks,
   fetchTaskSubtasks,
+  fetchTask,
   fetchWorkflowStages,
   moveTaskToStage,
 } from "../teamwork/api.js";
@@ -22,13 +23,35 @@ export const useTeamwork = () => {
     setLoading(true);
     try {
       const result = await fetchMyTasks();
-      setTasks(result.tasks);
+      const topIds = new Set(result.tasks.map((t) => t.id));
+
+      // Fetch pinned subtasks that aren't already top-level
+      const subtaskIds = [...pinnedIds].filter((id) => !topIds.has(id));
+      const promoted = [];
+      if (subtaskIds.length > 0) {
+        const fetched = await Promise.all(
+          subtaskIds.map(async (id) => {
+            try {
+              return await fetchTask(id);
+            } catch (err) {
+              console.error("Failed to fetch pinned subtask:", id, err);
+              return null;
+            }
+          }),
+        );
+        for (const task of fetched) {
+          if (task) promoted.push({ ...task, isPromotedSubtask: true });
+        }
+      }
+
+      // Merge promoted subtasks directly into the tasks array
+      setTasks([...result.tasks, ...promoted]);
       setProjects(result.projects);
     } catch {
       /* silent */
     }
     setLoading(false);
-  }, [configured]);
+  }, [configured, pinnedIds]);
 
   useEffect(() => {
     reload();
@@ -39,8 +62,8 @@ export const useTeamwork = () => {
   }, []);
 
   const updateInTree = useCallback((taskId, updater) => {
-    const walk = (tasks) =>
-      tasks.map((t) => {
+    const walk = (list) =>
+      list.map((t) => {
         if (t.id === taskId) return updater(t);
         if (t.subtasks?.length) return { ...t, subtasks: walk(t.subtasks) };
         return t;
@@ -51,9 +74,8 @@ export const useTeamwork = () => {
   const toggleExpanded = useCallback(
     (taskId) => {
       setTasks((prev) => {
-        // Check if we need to lazy-load subtasks
-        const findTask = (tasks) => {
-          for (const t of tasks) {
+        const findTask = (list) => {
+          for (const t of list) {
             if (t.id === taskId) return t;
             if (t.subtasks?.length) {
               const found = findTask(t.subtasks);
@@ -76,9 +98,8 @@ export const useTeamwork = () => {
           });
         }
 
-        // Toggle expanded
-        const walk = (tasks) =>
-          tasks.map((t) => {
+        const walk = (list) =>
+          list.map((t) => {
             if (t.id === taskId) return { ...t, expanded: !t.expanded };
             if (t.subtasks?.length) return { ...t, subtasks: walk(t.subtasks) };
             return t;
@@ -129,7 +150,25 @@ export const useTeamwork = () => {
     ? tasks.filter((t) => String(t.projectId) === String(selectedProjectId))
     : tasks;
 
-  const filteredTasks = [...filtered].sort((a, b) => {
+  // Also surface pinned subtasks from within the lazy-loaded tree
+  const topLevelIds = new Set(filtered.map((t) => t.id));
+  const treePromoted = [];
+  const walkForPinned = (items) => {
+    for (const t of items) {
+      if (t.subtasks?.length) {
+        for (const sub of t.subtasks) {
+          if (pinnedIds.has(sub.id) && !topLevelIds.has(sub.id)) {
+            treePromoted.push({ ...sub, isPromotedSubtask: true });
+            topLevelIds.add(sub.id);
+          }
+        }
+        walkForPinned(t.subtasks);
+      }
+    }
+  };
+  walkForPinned(filtered);
+
+  const filteredTasks = [...filtered, ...treePromoted].sort((a, b) => {
     const ap = pinnedIds.has(a.id) ? 0 : 1;
     const bp = pinnedIds.has(b.id) ? 0 : 1;
     return ap - bp;

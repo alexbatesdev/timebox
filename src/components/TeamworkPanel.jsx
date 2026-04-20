@@ -207,8 +207,6 @@ function TaskRow({
   onCloseMenu,
   pinned,
 }) {
-  const hasContent =
-    task.description || task.hasSubtasks || task.subtasks?.length > 0;
   const hasKids = task.hasSubtasks || task.subtasks?.length > 0;
   return (
     <div
@@ -225,8 +223,8 @@ function TaskRow({
         style={{
           background: "none",
           border: "none",
-          color: pinned ? "#fde047" : hasKids ? "#d1d5db" : hasContent ? "#6b7280" : "#333",
-          cursor: hasContent ? "pointer" : "default",
+          color: pinned ? "#fde047" : hasKids ? "#d1d5db" : "#6b7280",
+          cursor: "pointer",
           fontSize: "10px",
           padding: "0 4px",
           flexShrink: 0,
@@ -234,7 +232,7 @@ function TaskRow({
           textAlign: "center",
         }}
       >
-        {task.expanded ? "▼" : hasContent ? "▶" : "◦"}
+        {task.expanded ? "▼" : "▶"}
       </button>
       <span
         style={{
@@ -248,6 +246,9 @@ function TaskRow({
         }}
         title={task.name}
       >
+        {task.isPromotedSubtask && (
+          <span style={{ color: "#4b5563", marginRight: "3px", fontSize: "10px" }}>↳</span>
+        )}
         {task.name}
       </span>
       {task.workflowId && (

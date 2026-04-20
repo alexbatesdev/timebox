@@ -120,6 +120,24 @@ export const fetchTaskSubtasks = async (taskId) => {
   });
 };
 
+export const fetchTask = async (taskId) => {
+  const data = await twFetch(`/projects/api/v3/tasks/${taskId}.json?include=projects,tasklists`);
+  const t = data.task;
+  if (!t) return null;
+  const ws = t.workflowStages?.[0];
+  const wfId = ws?.workflowId ? String(ws.workflowId) : null;
+
+  // Resolve project from included data or tasklist
+  const includedProjects = data.included?.projects || {};
+  const includedTasklists = data.included?.tasklists || {};
+  const tasklistId = String(t.tasklist?.id || t.tasklistId || "");
+  const tl = includedTasklists[tasklistId];
+  const projectId = String(tl?.project?.id || tl?.projectId || "");
+  const projectName = includedProjects[projectId]?.name || "";
+
+  return mapTask(t, projectId, projectName, null, wfId);
+};
+
 export const moveTaskToStage = async (workflowId, stageId, taskId) => {
   const res = await fetch(
     `/api/teamwork/projects/api/v3/workflows/${workflowId}/stages/${stageId}/tasks.json`,
