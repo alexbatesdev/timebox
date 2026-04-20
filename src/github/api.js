@@ -92,6 +92,6 @@ export const fetchMyPRs = async () => {
 };
 
 export const fetchReviewRequests = async () => {
-  const data = await ghFetch("/search/issues?q=is:pr+is:open+review-requested:@me&sort=updated&per_page=50");
+  const data = await ghFetch("/search/issues?q=is:pr+is:open+draft:false+user-review-requested:@me&sort=updated&per_page=50");
   return (data.items || []).map(mapPR);
 };
