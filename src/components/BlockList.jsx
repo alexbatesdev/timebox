@@ -9,6 +9,7 @@ export default function BlockList({
   tasks,
   onTaskChange,
   onRemoveMeeting,
+  onResizeBlock,
 }) {
   return (
     <div
@@ -118,6 +119,42 @@ export default function BlockList({
                   >
                     ✕
                   </button>
+                )}
+                {!isPast && b.type !== "meeting" && b.type !== "wrapup" && (
+                  <>
+                    <button
+                      onClick={() => onResizeBlock(i, -5)}
+                      style={{
+                        background: "none",
+                        border: "1px solid #333",
+                        borderRadius: "4px",
+                        color: "#6b7280",
+                        cursor: "pointer",
+                        fontSize: "11px",
+                        padding: "1px 5px",
+                        lineHeight: 1,
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      −
+                    </button>
+                    <button
+                      onClick={() => onResizeBlock(i, 5)}
+                      style={{
+                        background: "none",
+                        border: "1px solid #333",
+                        borderRadius: "4px",
+                        color: "#6b7280",
+                        cursor: "pointer",
+                        fontSize: "11px",
+                        padding: "1px 5px",
+                        lineHeight: 1,
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      +
+                    </button>
+                  </>
                 )}
               </div>
             </div>

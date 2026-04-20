@@ -143,16 +143,15 @@ export default function App() {
     return idx;
   };
 
-  const resizeCurrentBlock = (delta) => {
-    const ci = getCurIdx();
+  const resizeBlock = (idx, delta) => {
     setBlocks((prev) => {
       const newBlocks = prev.map((b, i) => {
-        if (i === ci) return { ...b, end: b.end + delta };
+        if (i === idx) return { ...b, end: b.end + delta };
         return { ...b };
       });
 
       let shift = delta;
-      for (let i = ci + 1; i < newBlocks.length; i++) {
+      for (let i = idx + 1; i < newBlocks.length; i++) {
         if (newBlocks[i].type === "meeting" || newBlocks[i].type === "wrapup") {
           if (shift < 0 && i > 0) {
             newBlocks[i - 1] = { ...newBlocks[i - 1], end: newBlocks[i].start };
@@ -179,6 +178,8 @@ export default function App() {
       return newBlocks.filter((b) => b.end > b.start);
     });
   };
+
+  const resizeCurrentBlock = (delta) => resizeBlock(getCurIdx(), delta);
 
   const shiftCurrentBlock = (delta) => {
     const ci = getCurIdx();
@@ -721,6 +722,7 @@ export default function App() {
           tasks={tasks}
           onTaskChange={handleTaskChange}
           onRemoveMeeting={removeMeeting}
+          onResizeBlock={resizeBlock}
         />
 
         <WrapupSection
