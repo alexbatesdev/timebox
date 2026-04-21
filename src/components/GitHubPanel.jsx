@@ -414,7 +414,7 @@ function TierSection({
               onMarkRead={onMarkRead}
               confirmDeleteId={confirmDeleteId}
               onConfirmDelete={onConfirmDelete}
-              pinned={pinnedIds?.has(n.id)}
+              pinned={pinnedIds?.has(String(n.id))}
               onTogglePin={onTogglePin}
               expanded={expandedId === n.id}
               onToggleExpand={onToggleExpand}
@@ -590,7 +590,7 @@ function RepoGroup({ repo, prs, onHide, pinnedIds, onTogglePin, expandedId, onTo
         <PRItem
           key={pr.id}
           pr={pr}
-          pinned={pinnedIds?.has(pr.id)}
+          pinned={pinnedIds?.has(String(pr.id))}
           onTogglePin={onTogglePin}
           expanded={expandedId === pr.id}
           onToggleExpand={onToggleExpand}

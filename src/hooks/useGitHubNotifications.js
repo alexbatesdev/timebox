@@ -164,8 +164,8 @@ export const useGitHubNotifications = () => {
       if (!seenIds.has(n.id)) noise.push(n);
     }
     const byPinnedThenRecent = (a, b) => {
-      const ap = pinnedIds.has(a.id) ? 0 : 1;
-      const bp = pinnedIds.has(b.id) ? 0 : 1;
+      const ap = pinnedIds.has(String(a.id)) ? 0 : 1;
+      const bp = pinnedIds.has(String(b.id)) ? 0 : 1;
       if (ap !== bp) return ap - bp;
       return new Date(b.updated_at) - new Date(a.updated_at);
     };
@@ -177,8 +177,8 @@ export const useGitHubNotifications = () => {
 
   const sortedPrs = useMemo(() => {
     const byPinned = (a, b) => {
-      const ap = pinnedIds.has(a.id) ? 0 : 1;
-      const bp = pinnedIds.has(b.id) ? 0 : 1;
+      const ap = pinnedIds.has(String(a.id)) ? 0 : 1;
+      const bp = pinnedIds.has(String(b.id)) ? 0 : 1;
       return ap - bp;
     };
     return {
