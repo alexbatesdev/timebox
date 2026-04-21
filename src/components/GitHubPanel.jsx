@@ -29,6 +29,34 @@ function relativeTime(dateStr) {
   return `${days}d`;
 }
 
+const DEFAULT_AGE_THRESHOLDS = {
+  reviewRequests: [
+    { minHours: 0, color: "#6b7280" },
+    { minHours: 8, color: "#e5e7eb" },
+    { minHours: 16, color: "#f59e0b" },
+    { minHours: 72, color: "#dc2626", titleColor: "#dc2626" },
+  ],
+  mine: [
+    { minHours: 0, color: "#6b7280" },
+    { minHours: 8, color: "#e5e7eb" },
+    { minHours: 16, color: "#f59e0b" },
+    { minHours: 168, color: "#dc2626", titleColor: "#dc2626" },
+  ],
+};
+
+function getAgeColors(dateStr, thresholds) {
+  const hours = (Date.now() - new Date(dateStr).getTime()) / 3600000;
+  let timeColor = "#6b7280";
+  let titleColor = null;
+  for (const t of thresholds) {
+    if (hours >= t.minHours) {
+      timeColor = t.color;
+      titleColor = t.titleColor || null;
+    }
+  }
+  return { timeColor, titleColor };
+}
+
 function reasonLabel(reason) {
   const labels = {
     mention: "Mentioned",
@@ -437,7 +465,8 @@ const saveHiddenRepos = (set) => {
   localStorage.setItem(HIDDEN_REPOS_KEY, JSON.stringify([...set]));
 };
 
-function PRItem({ pr, pinned, onTogglePin, expanded, onToggleExpand, noteText, onNoteChange }) {
+function PRItem({ pr, pinned, onTogglePin, expanded, onToggleExpand, noteText, onNoteChange, thresholds }) {
+  const { timeColor, titleColor } = getAgeColors(pr.updatedAt, thresholds);
   return (
     <div style={{ borderBottom: "1px solid #1a1a1a", padding: "6px 0" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -464,7 +493,7 @@ function PRItem({ pr, pinned, onTogglePin, expanded, onToggleExpand, noteText, o
             flex: 1,
             minWidth: 0,
             fontSize: "12px",
-            color: pinned ? "#fde047" : "#d1d5db",
+            color: pinned ? "#fde047" : titleColor || "#d1d5db",
             fontWeight: "600",
             whiteSpace: "nowrap",
             overflow: "hidden",
@@ -504,9 +533,9 @@ function PRItem({ pr, pinned, onTogglePin, expanded, onToggleExpand, noteText, o
         <span style={{ fontSize: "10px", color: "#4b5563" }}>{pr.repo}</span>
         <span
           style={{
-            fontSize: "10px",
+            fontSize: "12px",
             fontWeight: "700",
-            color: "#6b7280",
+            color: timeColor,
             marginLeft: "auto",
           }}
         >
@@ -538,7 +567,7 @@ function PRItem({ pr, pinned, onTogglePin, expanded, onToggleExpand, noteText, o
   );
 }
 
-function RepoGroup({ repo, prs, onHide, pinnedIds, onTogglePin, expandedId, onToggleExpand, getNote, setNote }) {
+function RepoGroup({ repo, prs, onHide, pinnedIds, onTogglePin, expandedId, onToggleExpand, getNote, setNote, thresholds }) {
   const [collapsed, setCollapsed] = useState(false);
   return (
     <div>
@@ -596,6 +625,7 @@ function RepoGroup({ repo, prs, onHide, pinnedIds, onTogglePin, expandedId, onTo
           onToggleExpand={onToggleExpand}
           noteText={getNote(pr.id)}
           onNoteChange={(text) => setNote(pr.id, text)}
+          thresholds={thresholds}
         />
       ))}
     </div>
@@ -614,6 +644,8 @@ function PRSection({
   getNote,
   setNote,
   defaultExpanded = true,
+  accentColor,
+  thresholds,
 }) {
   const [collapsed, setCollapsed] = useState(!defaultExpanded);
   const visible = items.filter((pr) => !hiddenRepos.has(pr.repo));
@@ -672,7 +704,7 @@ function PRSection({
         </span>
       </button>
       {!collapsed && visible.length > 0 && (
-        <div style={{ padding: "0 16px" }}>
+        <div style={{ padding: "0 16px", borderLeft: accentColor ? `2px solid ${accentColor}` : "none", marginLeft: accentColor ? "14px" : "0" }}>
           {repos.map((repo) => (
             <RepoGroup
               key={repo}
@@ -685,6 +717,7 @@ function PRSection({
               onToggleExpand={onToggleExpand}
               getNote={getNote}
               setNote={setNote}
+              thresholds={thresholds}
             />
           ))}
         </div>
@@ -752,6 +785,20 @@ export default function GitHubPanel({
   const [expandedId, setExpandedId] = useState(null);
   const { getNote, setNote } = useNotes("timebox-gh-notes");
   const confirmTimeoutRef = useRef(null);
+  const [ageThresholds, setAgeThresholds] = useState(DEFAULT_AGE_THRESHOLDS);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/pr-age-thresholds.json", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled && data.reviewRequests && data.mine) {
+          setAgeThresholds(data);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   const handleToggleExpand = (id) => {
     setExpandedId((prev) => (prev === id ? null : id));
@@ -1000,6 +1047,8 @@ export default function GitHubPanel({
               onToggleExpand={handleToggleExpand}
               getNote={getNote}
               setNote={setNote}
+              accentColor="#3b82f6"
+              thresholds={ageThresholds.reviewRequests}
             />
             <PRSection
               title="My Open PRs"
@@ -1012,6 +1061,8 @@ export default function GitHubPanel({
               onToggleExpand={handleToggleExpand}
               getNote={getNote}
               setNote={setNote}
+              accentColor="#22c55e"
+              thresholds={ageThresholds.mine}
             />
             {hiddenRepos.size > 0 && (
               <button

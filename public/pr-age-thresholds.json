@@ -1,0 +1,14 @@
+{
+  "reviewRequests": [
+    { "minHours": 0, "color": "#6b7280" },
+    { "minHours": 8, "color": "#e5e7eb" },
+    { "minHours": 16, "color": "#f59e0b" },
+    { "minHours": 72, "color": "#dc2626", "titleColor": "#dc2626" }
+  ],
+  "mine": [
+    { "minHours": 0, "color": "#6b7280" },
+    { "minHours": 8, "color": "#e5e7eb" },
+    { "minHours": 16, "color": "#f59e0b" },
+    { "minHours": 168, "color": "#dc2626", "titleColor": "#dc2626" }
+  ]
+}
