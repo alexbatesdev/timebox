@@ -318,7 +318,7 @@ function TaskNode({
   getNote,
   setNote,
 }) {
-  const pinned = pinnedIds?.has(task.id);
+  const pinned = pinnedIds?.has(String(task.id));
   return (
     <div>
       <TaskRow

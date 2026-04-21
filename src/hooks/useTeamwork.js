@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   isTeamworkConfigured,
   fetchMyTasks,
@@ -9,6 +9,17 @@ import {
 } from "../teamwork/api.js";
 import { usePinned } from "./usePinned.js";
 
+const findInTree = (list, id) => {
+  for (const t of list) {
+    if (String(t.id) === String(id)) return t;
+    if (t.subtasks?.length) {
+      const found = findInTree(t.subtasks, id);
+      if (found) return found;
+    }
+  }
+  return null;
+};
+
 export const useTeamwork = () => {
   const configured = isTeamworkConfigured();
   const [tasks, setTasks] = useState([]);
@@ -17,16 +28,19 @@ export const useTeamwork = () => {
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [workflowData, setWorkflowData] = useState({});
   const { pinnedIds, togglePin } = usePinned("timebox-tw-pinned");
+  const pinnedIdsRef = useRef(pinnedIds);
+  useEffect(() => { pinnedIdsRef.current = pinnedIds; }, [pinnedIds]);
 
   const reload = useCallback(async () => {
     if (!configured) return;
     setLoading(true);
     try {
       const result = await fetchMyTasks();
-      const topIds = new Set(result.tasks.map((t) => t.id));
+      const topIds = new Set(result.tasks.map((t) => String(t.id)));
 
       // Fetch pinned subtasks that aren't already top-level
-      const subtaskIds = [...pinnedIds].filter((id) => !topIds.has(id));
+      const currentPinned = pinnedIdsRef.current;
+      const subtaskIds = [...currentPinned].filter((id) => !topIds.has(String(id)));
       const promoted = [];
       if (subtaskIds.length > 0) {
         const fetched = await Promise.all(
@@ -44,14 +58,13 @@ export const useTeamwork = () => {
         }
       }
 
-      // Merge promoted subtasks directly into the tasks array
       setTasks([...result.tasks, ...promoted]);
       setProjects(result.projects);
     } catch {
       /* silent */
     }
     setLoading(false);
-  }, [configured, pinnedIds]);
+  }, [configured]);
 
   useEffect(() => {
     reload();
@@ -64,7 +77,7 @@ export const useTeamwork = () => {
   const updateInTree = useCallback((taskId, updater) => {
     const walk = (list) =>
       list.map((t) => {
-        if (t.id === taskId) return updater(t);
+        if (String(t.id) === String(taskId)) return updater(t);
         if (t.subtasks?.length) return { ...t, subtasks: walk(t.subtasks) };
         return t;
       });
@@ -74,17 +87,7 @@ export const useTeamwork = () => {
   const toggleExpanded = useCallback(
     (taskId) => {
       setTasks((prev) => {
-        const findTask = (list) => {
-          for (const t of list) {
-            if (t.id === taskId) return t;
-            if (t.subtasks?.length) {
-              const found = findTask(t.subtasks);
-              if (found) return found;
-            }
-          }
-          return null;
-        };
-        const task = findTask(prev);
+        const task = findInTree(prev, taskId);
         if (task && task.subtasks === null && !task.expanded) {
           fetchTaskSubtasks(taskId).then((subs) => {
             updateInTree(taskId, (t) => ({
@@ -100,7 +103,7 @@ export const useTeamwork = () => {
 
         const walk = (list) =>
           list.map((t) => {
-            if (t.id === taskId) return { ...t, expanded: !t.expanded };
+            if (String(t.id) === String(taskId)) return { ...t, expanded: !t.expanded };
             if (t.subtasks?.length) return { ...t, subtasks: walk(t.subtasks) };
             return t;
           });
@@ -113,6 +116,33 @@ export const useTeamwork = () => {
   const toggleDescExpanded = useCallback(
     (taskId) => updateInTree(taskId, (t) => ({ ...t, descExpanded: !t.descExpanded })),
     [updateInTree],
+  );
+
+  // Wrap togglePin to fetch subtask data if not already in the tree
+  const handleTogglePin = useCallback(
+    (taskId) => {
+      togglePin(taskId);
+      // If pinning (not unpinning), check if we need to fetch this task
+      const isPinning = !pinnedIdsRef.current.has(String(taskId));
+      if (isPinning) {
+        // Check if task is already in the tree; if not, fetch it
+        setTasks((prev) => {
+          if (findInTree(prev, taskId)) return prev;
+          // Fetch async, then append
+          fetchTask(taskId).then((task) => {
+            if (!task) return;
+            setTasks((p) => {
+              if (findInTree(p, taskId)) return p;
+              return [...p, { ...task, isPromotedSubtask: true }];
+            });
+          }).catch((err) => {
+            console.error("Failed to fetch pinned subtask:", taskId, err);
+          });
+          return prev;
+        });
+      }
+    },
+    [togglePin],
   );
 
   const loadWorkflowStages = useCallback(
@@ -146,20 +176,22 @@ export const useTeamwork = () => {
     [workflowData, updateInTree, reload],
   );
 
-  const filtered = selectedProjectId
+  const filtered = (selectedProjectId
     ? tasks.filter((t) => String(t.projectId) === String(selectedProjectId))
-    : tasks;
+    : tasks
+  ).filter((t) => !t.isPromotedSubtask || pinnedIds.has(String(t.id)));
 
-  // Also surface pinned subtasks from within the lazy-loaded tree
-  const topLevelIds = new Set(filtered.map((t) => t.id));
+  // Surface pinned subtasks from the lazy-loaded tree
+  const topLevelIds = new Set(filtered.map((t) => String(t.id)));
   const treePromoted = [];
   const walkForPinned = (items) => {
     for (const t of items) {
       if (t.subtasks?.length) {
         for (const sub of t.subtasks) {
-          if (pinnedIds.has(sub.id) && !topLevelIds.has(sub.id)) {
+          const sid = String(sub.id);
+          if (pinnedIds.has(sid) && !topLevelIds.has(sid)) {
             treePromoted.push({ ...sub, isPromotedSubtask: true });
-            topLevelIds.add(sub.id);
+            topLevelIds.add(sid);
           }
         }
         walkForPinned(t.subtasks);
@@ -168,11 +200,20 @@ export const useTeamwork = () => {
   };
   walkForPinned(filtered);
 
-  const filteredTasks = [...filtered, ...treePromoted].sort((a, b) => {
-    const ap = pinnedIds.has(a.id) ? 0 : 1;
-    const bp = pinnedIds.has(b.id) ? 0 : 1;
-    return ap - bp;
-  });
+  // Final assembly with deduplication
+  const seen = new Set();
+  const filteredTasks = [...filtered, ...treePromoted]
+    .filter((t) => {
+      const key = String(t.id);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => {
+      const ap = pinnedIds.has(String(a.id)) ? 0 : 1;
+      const bp = pinnedIds.has(String(b.id)) ? 0 : 1;
+      return ap - bp;
+    });
 
   return {
     configured,
@@ -185,7 +226,7 @@ export const useTeamwork = () => {
     setProject,
     toggleExpanded,
     toggleDescExpanded,
-    togglePin,
+    togglePin: handleTogglePin,
     loadWorkflowStages,
     changeStage,
     reload,
