@@ -108,16 +108,20 @@ export default function CurrentBlock({
               background: "#ffffff08",
               border: "1px solid #ffffff12",
               borderRadius: "8px",
-              padding: "10px 12px",
+              padding: "12px 14px",
               marginBottom: "12px",
               fontSize: "12px",
+              textAlign: "left",
             }}
           >
             <div
               style={{
+                fontSize: "11px",
                 color: "#6b7280",
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
                 fontWeight: "600",
-                marginBottom: "6px",
+                marginBottom: "10px",
               }}
             >
               Yesterday's wrap-up
@@ -126,25 +130,63 @@ export default function CurrentBlock({
               style={{
                 display: "flex",
                 flexDirection: "row",
-                justifyContent: "space-around",
+                gap: "20px",
               }}
             >
               {yesterdayWrapup.left && (
-                <div style={{ marginBottom: "6px" }}>
-                  <div style={{ color: "#6b7280", fontSize: "11px" }}>
+                <div style={{ flex: 1 }}>
+                  <div
+                    style={{
+                      fontSize: "10px",
+                      color: "#6b7280",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                      fontWeight: "600",
+                      marginBottom: "4px",
+                    }}
+                  >
                     Where I left off
                   </div>
-                  <div style={{ color: "#9ca3af", whiteSpace: "pre-wrap" }}>
+                  <div
+                    style={{
+                      color: "#9ca3af",
+                      whiteSpace: "pre-wrap",
+                      lineHeight: 1.45,
+                    }}
+                  >
                     {yesterdayWrapup.left}
                   </div>
                 </div>
               )}
               {yesterdayWrapup.next && (
-                <div>
-                  <div style={{ color: "#6b7280", fontSize: "11px" }}>
+                <div
+                  style={{
+                    flex: 1,
+                    paddingLeft: yesterdayWrapup.left ? "20px" : 0,
+                    borderLeft: yesterdayWrapup.left
+                      ? "1px solid #ffffff12"
+                      : "none",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "10px",
+                      color: "#6b7280",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                      fontWeight: "600",
+                      marginBottom: "4px",
+                    }}
+                  >
                     What's next
                   </div>
-                  <div style={{ color: "#9ca3af", whiteSpace: "pre-wrap" }}>
+                  <div
+                    style={{
+                      color: "#9ca3af",
+                      whiteSpace: "pre-wrap",
+                      lineHeight: 1.45,
+                    }}
+                  >
                     {yesterdayWrapup.next}
                   </div>
                 </div>
