@@ -14,6 +14,7 @@ export const useScheduleInit = ({
   setConfigStatus,
   setConfig,
   clearNotified,
+  showToast,
 }) => {
   useEffect(() => {
     let cancelled = false;
@@ -38,8 +39,8 @@ export const useScheduleInit = ({
       let notionState = null;
       try {
         notionState = await loadTodayFromNotion(token);
-      } catch {
-        notionState = null;
+      } catch (err) {
+        showToast?.(`Notion load failed: ${err.message}`, "warn");
       }
       if (cancelled) return;
 
@@ -50,6 +51,13 @@ export const useScheduleInit = ({
         setWrapup(notionState.snapshot.wrapup);
         setNotionPageId(notionState.pageId);
         clearNotified();
+        if (notionState.warnings?.length) {
+          const lines = notionState.warnings.map((w) => `"${w}"`).join(", ");
+          showToast?.(
+            `Notion: skipped ${notionState.warnings.length} malformed line(s): ${lines}`,
+            "warn",
+          );
+        }
         const config = await loadScheduleConfig();
         if (!cancelled) setConfig(config);
         setConfigStatus("ready");

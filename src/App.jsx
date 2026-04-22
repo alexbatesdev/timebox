@@ -4,7 +4,11 @@ import { clearState } from "./utils/storage.js";
 import { loadScheduleConfig } from "./data/scheduleConfig.js";
 import { createScheduleState } from "./data/schedules.js";
 import { buildMarkdown } from "./export/markdown.js";
-import { notionFetch, replaceNotionPageContent } from "./notion/api.js";
+import {
+  loadTodayFromNotion,
+  notionFetch,
+  replaceNotionPageContent,
+} from "./notion/api.js";
 import { buildNotionPayload } from "./notion/payload.js";
 import { useClock } from "./hooks/useClock.js";
 import { usePersist } from "./hooks/usePersist.js";
@@ -16,6 +20,7 @@ import { useTeamwork } from "./hooks/useTeamwork.js";
 import { useGitHubNotifications } from "./hooks/useGitHubNotifications.js";
 import LoadingScreen from "./components/LoadingScreen.jsx";
 import Header from "./components/Header.jsx";
+import Toast from "./components/Toast.jsx";
 import CurrentBlock from "./components/CurrentBlock.jsx";
 import AwayModal from "./components/AwayModal.jsx";
 import MeetingForm from "./components/MeetingForm.jsx";
@@ -36,6 +41,12 @@ export default function App() {
   const [notionPageId, setNotionPageId] = useState(null);
   const [configStatus, setConfigStatus] = useState("loading");
   const [config, setConfig] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  const showToast = useCallback((message, tone = "info") => {
+    setToast({ message, tone, id: Date.now() });
+  }, []);
+  const dismissToast = useCallback(() => setToast(null), []);
 
   const [showMeetingForm, setShowMeetingForm] = useState(false);
   const [mtgLabel, setMtgLabel] = useState("");
@@ -70,6 +81,7 @@ export default function App() {
     setConfigStatus,
     setConfig,
     clearNotified,
+    showToast,
   });
 
   const looseEnds = useLooseEnds();
@@ -88,9 +100,45 @@ export default function App() {
     clearNotified();
   };
 
-  const reloadScheduleFromConfig = useCallback(async () => {
+  const reloadSchedule = useCallback(async () => {
     clearState();
     setConfigStatus("loading");
+
+    const token = import.meta.env.VITE_NOTION_TOKEN;
+    const dbId = import.meta.env.VITE_NOTION_DATABASE_ID;
+    if (token && dbId) {
+      let notionState = null;
+      try {
+        notionState = await loadTodayFromNotion(token);
+      } catch (err) {
+        showToast(`Notion load failed: ${err.message}`, "warn");
+      }
+      if (notionState?.snapshot) {
+        setSchedType(notionState.snapshot.schedType);
+        setBlocks(notionState.snapshot.blocks);
+        setTasks(notionState.snapshot.tasks);
+        setWrapup(notionState.snapshot.wrapup);
+        setNotionPageId(notionState.pageId);
+        clearNotified();
+        if (notionState.warnings?.length) {
+          const lines = notionState.warnings
+            .map((w) => `"${w}"`)
+            .join(", ");
+          showToast(
+            `Notion: skipped ${notionState.warnings.length} malformed line(s): ${lines}`,
+            "warn",
+          );
+        }
+        const freshConfig = await loadScheduleConfig();
+        setConfig(freshConfig);
+        setConfigStatus("ready");
+        return;
+      }
+      if (notionState === null) {
+        showToast("No Notion page for today — using local config", "info");
+      }
+    }
+
     const freshConfig = await loadScheduleConfig();
     setConfig(freshConfig);
     const weekday = getWeekdayKey();
@@ -108,7 +156,7 @@ export default function App() {
       clearNotified();
     }
     setConfigStatus("ready");
-  }, [clearNotified]);
+  }, [clearNotified, showToast]);
 
   // Auto-reload when tab becomes visible on a new day
   const loadedDateKey = useRef(todayKey());
@@ -121,7 +169,7 @@ export default function App() {
       reloadGitHub();
       if (todayKey() !== loadedDateKey.current) {
         loadedDateKey.current = todayKey();
-        reloadScheduleFromConfig();
+        reloadSchedule();
         reloadTeamwork();
         reloadLooseEnds();
       }
@@ -133,7 +181,7 @@ export default function App() {
       document.removeEventListener("visibilitychange", checkAndReload);
       window.removeEventListener("focus", onFocus);
     };
-  }, [reloadScheduleFromConfig, reloadTeamwork, reloadLooseEnds, reloadGitHub]);
+  }, [reloadSchedule, reloadTeamwork, reloadLooseEnds, reloadGitHub]);
 
   const getCurIdx = () => {
     let idx = 0;
@@ -529,7 +577,19 @@ export default function App() {
 
   /* ── render ────────────────────────────────────────── */
   if (configStatus === "loading" || !schedType) {
-    return <LoadingScreen onInitSchedule={initSchedule} />;
+    return (
+      <>
+        <LoadingScreen onInitSchedule={initSchedule} />
+        {toast && (
+          <Toast
+            key={toast.id}
+            message={toast.message}
+            tone={toast.tone}
+            onDismiss={dismissToast}
+          />
+        )}
+      </>
+    );
   }
 
   const ci = getCurIdx();
@@ -577,6 +637,14 @@ export default function App() {
         transition: "padding 0.25s ease",
       }}
     >
+      {toast && (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          tone={toast.tone}
+          onDismiss={dismissToast}
+        />
+      )}
       {/* Left panels wrapper */}
       {(teamwork.configured || github.configured) && (
         <div
@@ -650,7 +718,7 @@ export default function App() {
           notifPerm={notifPerm}
           onRequestNotif={requestNotif}
           onTestNotif={testNotif}
-          onReload={reloadScheduleFromConfig}
+          onReload={reloadSchedule}
         />
 
         {cur && (

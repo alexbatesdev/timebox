@@ -56,6 +56,7 @@ export const parseLegacyNotionBlocks = (notionBlocks) => {
   const parsedBlocks = [];
   const tasks = {};
   const wrapup = { left: "", next: "" };
+  const warnings = [];
 
   for (const block of notionBlocks) {
     if (block.type !== "toggle") continue;
@@ -63,7 +64,10 @@ export const parseLegacyNotionBlocks = (notionBlocks) => {
     if (title === TIMEBOX_STATE_LABEL) continue;
 
     const parsedTitle = parseTimeRange(title);
-    if (!parsedTitle) continue;
+    if (!parsedTitle) {
+      warnings.push(title);
+      continue;
+    }
 
     const childText = (block.children || [])
       .filter((child) => child.type === "callout")
@@ -109,13 +113,15 @@ export const parseLegacyNotionBlocks = (notionBlocks) => {
     }
   }
 
-  if (!parsedBlocks.length) return null;
-  return {
-    schedType: inferSchedTypeFromBlocks(parsedBlocks),
-    blocks: parsedBlocks,
-    tasks,
-    wrapup,
-  };
+  const snapshot = parsedBlocks.length
+    ? {
+        schedType: inferSchedTypeFromBlocks(parsedBlocks),
+        blocks: parsedBlocks,
+        tasks,
+        wrapup,
+      }
+    : null;
+  return { snapshot, warnings };
 };
 
 export const extractSnapshotFromBlocks = (notionBlocks) => {
@@ -130,5 +136,6 @@ export const extractSnapshotFromBlocks = (notionBlocks) => {
   const snapshot = codeBlock
     ? parseSnapshotText(notionRichTextToPlain(codeBlock.code?.rich_text))
     : null;
-  return snapshot || parseLegacyNotionBlocks(notionBlocks);
+  if (snapshot) return { snapshot, warnings: [] };
+  return parseLegacyNotionBlocks(notionBlocks);
 };

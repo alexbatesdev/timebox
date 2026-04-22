@@ -86,9 +86,11 @@ export const loadTodayFromNotion = async (token) => {
 
   const children = await fetchAllBlockChildren(page.id, token);
   const fullChildren = await fetchBlockChildrenRecursive(children, token);
+  const { snapshot, warnings } = extractSnapshotFromBlocks(fullChildren);
   return {
     pageId: page.id,
-    snapshot: extractSnapshotFromBlocks(fullChildren),
+    snapshot,
+    warnings,
   };
 };
 
