@@ -47,6 +47,7 @@ export const useGitHubNotifications = () => {
 
   // Initial load
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     reload();
   }, [reload]);
 
@@ -98,7 +99,8 @@ export const useGitHubNotifications = () => {
   const markAllRead = useCallback(
     async (threadIds) => {
       const idSet = new Set(threadIds.map(String));
-      const markUnread = (n) => (idSet.has(String(n.id)) ? { ...n, unread: false } : n);
+      const markUnread = (n) =>
+        idSet.has(String(n.id)) ? { ...n, unread: false } : n;
       setNotifications((prev) => prev.map(markUnread));
       setNoiseNotifications((prev) => prev.map(markUnread));
       try {
@@ -131,7 +133,10 @@ export const useGitHubNotifications = () => {
   const loadPRs = useCallback(async () => {
     if (!configured) return;
     try {
-      const [mine, reviewRequests] = await Promise.all([fetchMyPRs(), fetchReviewRequests()]);
+      const [mine, reviewRequests] = await Promise.all([
+        fetchMyPRs(),
+        fetchReviewRequests(),
+      ]);
       setPrs({ mine, reviewRequests });
     } catch (err) {
       console.error("GitHub PR fetch error:", err);
@@ -142,7 +147,9 @@ export const useGitHubNotifications = () => {
     if (!configured) return;
     try {
       const data = await fetchNoiseNotifications();
-      setNoiseNotifications(data.filter((n) => !dismissedRef.current.has(n.id)));
+      setNoiseNotifications(
+        data.filter((n) => !dismissedRef.current.has(n.id)),
+      );
     } catch (err) {
       console.error("GitHub noise fetch error:", err);
     }

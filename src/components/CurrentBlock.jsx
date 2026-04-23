@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fmtTime } from "../utils/time.js";
 import { TC, isWorkType } from "../data/theme.js";
 import { loadYesterdayWrapup } from "../utils/storage.js";
@@ -16,6 +16,21 @@ export default function CurrentBlock({
 }) {
   const [yesterdayWrapup] = useState(() => loadYesterdayWrapup());
   const [shiftMode, setShiftMode] = useState("resize");
+  const priorModeRef = useRef(null);
+  const isBreak = block?.type === "break";
+
+  useEffect(() => {
+    if (isBreak) {
+      priorModeRef.current = shiftMode;
+      setShiftMode("shift");
+    } else if (priorModeRef.current !== null) {
+      setShiftMode(priorModeRef.current);
+      priorModeRef.current = null;
+    }
+    // shiftMode intentionally excluded: only react to break transitions,
+    // not every mode toggle the user makes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isBreak]);
   const tc = TC[block?.type] || TC.work;
   const minsLeft = Math.max(0, block.end - now);
   const progress = Math.min(
