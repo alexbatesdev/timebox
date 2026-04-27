@@ -159,10 +159,11 @@ export default function BlockList({
                 )}
               </div>
             </div>
-            {showTask && (!isPast || isPastPlan) && (
+            {showTask && (!isPast || isPastPlan || tasks[b.id]) && (
               <AutoTextarea
                 value={tasks[b.id] || ""}
                 onChange={(e) => onTaskChange(b.id, e.target.value)}
+                readOnly={isPast && !isPastPlan}
                 placeholder={
                   b.type === "meeting" ? "Notes..." : "Task for this block..."
                 }
