@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getWeekdayKey, todayKey } from "./utils/time.js";
-import { clearState } from "./utils/storage.js";
+import { clearState, loadPreviousWrapup } from "./utils/storage.js";
 import { loadScheduleConfig } from "./data/scheduleConfig.js";
 import { createScheduleState } from "./data/schedules.js";
 import { buildMarkdown } from "./export/markdown.js";
 import {
   loadTodayFromNotion,
+  loadPreviousWrapupFromNotion,
   notionFetch,
   replaceNotionPageContent,
 } from "./notion/api.js";
@@ -38,6 +39,7 @@ export default function App() {
   const [blocks, setBlocks] = useState([]);
   const [tasks, setTasks] = useState({});
   const [wrapup, setWrapup] = useState({ left: "", next: "" });
+  const [previousWrapup, setPreviousWrapup] = useState(null);
   const [notionPageId, setNotionPageId] = useState(null);
   const [configStatus, setConfigStatus] = useState("loading");
   const [config, setConfig] = useState(null);
@@ -54,7 +56,7 @@ export default function App() {
   const [mtgMinute, setMtgMinute] = useState(0);
   const [mtgDuration, setMtgDuration] = useState(30);
   const [mtgIncludesLunch, setMtgIncludesLunch] = useState(false);
-  const [exportStatus, setExportStatus] = useState(null);
+  const [isSending, setIsSending] = useState(false);
   const [showAwayModal, setShowAwayModal] = useState(false);
   const [awayStart, setAwayStart] = useState(null);
   const [awayAbsorbFlex, setAwayAbsorbFlex] = useState(true);
@@ -77,6 +79,7 @@ export default function App() {
     setBlocks,
     setTasks,
     setWrapup,
+    setPreviousWrapup,
     setNotionPageId,
     setConfigStatus,
     setConfig,
@@ -106,6 +109,19 @@ export default function App() {
 
     const token = import.meta.env.VITE_NOTION_TOKEN;
     const dbId = import.meta.env.VITE_NOTION_DATABASE_ID;
+
+    let previous = null;
+    try {
+      previous = await loadPreviousWrapupFromNotion(token);
+    } catch (err) {
+      showToast(
+        `Notion previous-wrap-up load failed: ${err.message}`,
+        "warn",
+      );
+    }
+    if (!previous) previous = loadPreviousWrapup();
+    setPreviousWrapup(previous);
+
     if (token && dbId) {
       let notionState = null;
       try {
@@ -450,8 +466,7 @@ export default function App() {
   const copyMarkdown = async () => {
     const md = buildMarkdown(blocks, tasks, wrapup);
     await navigator.clipboard.writeText(md);
-    setExportStatus("copied");
-    setTimeout(() => setExportStatus(null), 2000);
+    showToast("✅ Copied to clipboard!", "info");
   };
 
   const sendToNotion = async () => {
@@ -459,11 +474,13 @@ export default function App() {
     const parentPage = import.meta.env.VITE_NOTION_PARENT_PAGE;
     const dbId = import.meta.env.VITE_NOTION_DATABASE_ID;
     if (!token || (!parentPage && !dbId)) {
-      setExportStatus("missing-env");
-      setTimeout(() => setExportStatus(null), 4000);
+      showToast(
+        "⚠️ Set VITE_NOTION_TOKEN and VITE_NOTION_PARENT_PAGE env vars",
+        "warn",
+      );
       return;
     }
-    setExportStatus("sending");
+    setIsSending(true);
     try {
       const payload = buildNotionPayload(
         parentPage,
@@ -480,12 +497,12 @@ export default function App() {
         });
         if (!updateRes.ok) {
           const err = await updateRes.json().catch(() => ({}));
-          if (updateRes.status === 401) setExportStatus("bad-token");
-          else if (updateRes.status === 404) setExportStatus("bad-parent");
-          else setExportStatus(`error: ${err.message || updateRes.status}`);
+          if (updateRes.status === 401) showToast("⚠️ Invalid Notion token", "warn");
+          else if (updateRes.status === 404) showToast("⚠️ Parent page not found", "warn");
+          else showToast(`⚠️ ${err.message || updateRes.status}`, "warn");
         } else {
           await replaceNotionPageContent(notionPageId, token, payload.children);
-          setExportStatus("sent");
+          showToast("✅ Sent to Notion!", "info");
         }
       } else {
         const createRes = await notionFetch("/pages", token, {
@@ -494,19 +511,19 @@ export default function App() {
         });
         if (!createRes.ok) {
           const err = await createRes.json().catch(() => ({}));
-          if (createRes.status === 401) setExportStatus("bad-token");
-          else if (createRes.status === 404) setExportStatus("bad-parent");
-          else setExportStatus(`error: ${err.message || createRes.status}`);
+          if (createRes.status === 401) showToast("⚠️ Invalid Notion token", "warn");
+          else if (createRes.status === 404) showToast("⚠️ Parent page not found", "warn");
+          else showToast(`⚠️ ${err.message || createRes.status}`, "warn");
         } else {
           const created = await createRes.json();
           setNotionPageId(created.id);
-          setExportStatus("sent");
+          showToast("✅ Sent to Notion!", "info");
         }
       }
     } catch {
-      setExportStatus("network-error");
+      showToast("⚠️ Network error — is the dev server running?", "warn");
     }
-    setTimeout(() => setExportStatus(null), 4000);
+    setIsSending(false);
   };
 
   /* ── auto-send to Notion at 5 PM ─────────────────── */
@@ -606,17 +623,6 @@ export default function App() {
   const schedEndHour = blocks.length
     ? Math.ceil(Math.max(...blocks.map((b) => b.end)) / 60)
     : 18;
-
-  const exportStatusMsg = {
-    copied: "✅ Copied to clipboard!",
-    sent: "✅ Sent to Notion!",
-    sending: "⏳ Sending…",
-    "missing-env":
-      "⚠️ Set VITE_NOTION_TOKEN and VITE_NOTION_PARENT_PAGE env vars",
-    "bad-token": "⚠️ Invalid Notion token",
-    "bad-parent": "⚠️ Parent page not found",
-    "network-error": "⚠️ Network error — is the dev server running?",
-  };
 
   const handleTaskChange = (id, value) => {
     setTasks((p) => ({ ...p, [id]: value }));
@@ -726,6 +732,7 @@ export default function App() {
             block={cur}
             now={now}
             tasks={tasks}
+            previousWrapup={previousWrapup}
             onTaskChange={handleTaskChange}
             onResize={resizeCurrentBlock}
             onShift={shiftCurrentBlock}
@@ -800,8 +807,7 @@ export default function App() {
         />
 
         <ExportBar
-          exportStatus={exportStatus}
-          exportStatusMsg={exportStatusMsg}
+          isSending={isSending}
           onCopyMarkdown={copyMarkdown}
           onSendToNotion={sendToNotion}
         />

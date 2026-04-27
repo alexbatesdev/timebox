@@ -17,15 +17,21 @@ export const saveState = (state) => {
 };
 export const clearState = () => localStorage.removeItem(todayKey());
 
-export const loadYesterdayWrapup = () => {
+export const loadPreviousWrapup = (maxDaysBack = 7) => {
   try {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const key = `timebox-${yesterday.toISOString().slice(0, 10)}`;
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return parsed?.wrapup || null;
+    for (let i = 1; i <= maxDaysBack; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateISO = d.toISOString().slice(0, 10);
+      const raw = localStorage.getItem(`timebox-${dateISO}`);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw);
+      const wrapup = parsed?.wrapup;
+      if (wrapup && (wrapup.left || wrapup.next)) {
+        return { wrapup, dateISO };
+      }
+    }
+    return null;
   } catch {
     return null;
   }

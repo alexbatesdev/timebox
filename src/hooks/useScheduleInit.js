@@ -1,15 +1,19 @@
 import { useEffect } from "react";
 import { getWeekdayKey } from "../utils/time.js";
-import { loadState } from "../utils/storage.js";
+import { loadState, loadPreviousWrapup } from "../utils/storage.js";
 import { loadScheduleConfig } from "../data/scheduleConfig.js";
 import { resolveInitialState } from "../data/schedules.js";
-import { loadTodayFromNotion } from "../notion/api.js";
+import {
+  loadTodayFromNotion,
+  loadPreviousWrapupFromNotion,
+} from "../notion/api.js";
 
 export const useScheduleInit = ({
   setSchedType,
   setBlocks,
   setTasks,
   setWrapup,
+  setPreviousWrapup,
   setNotionPageId,
   setConfigStatus,
   setConfig,
@@ -20,6 +24,21 @@ export const useScheduleInit = ({
     let cancelled = false;
 
     const applyConfig = async () => {
+      const token = import.meta.env.VITE_NOTION_TOKEN;
+
+      let previous = null;
+      try {
+        previous = await loadPreviousWrapupFromNotion(token);
+      } catch (err) {
+        showToast?.(
+          `Notion previous-wrap-up load failed: ${err.message}`,
+          "warn",
+        );
+      }
+      if (cancelled) return;
+      if (!previous) previous = loadPreviousWrapup();
+      setPreviousWrapup?.(previous);
+
       const saved = loadState();
       if (saved?.schedType) {
         setSchedType(saved.schedType);
@@ -35,7 +54,6 @@ export const useScheduleInit = ({
         return;
       }
 
-      const token = import.meta.env.VITE_NOTION_TOKEN;
       let notionState = null;
       try {
         notionState = await loadTodayFromNotion(token);

@@ -1,20 +1,28 @@
 import { useEffect, useRef, useState } from "react";
 import { fmtTime } from "../utils/time.js";
 import { TC, isWorkType } from "../data/theme.js";
-import { loadYesterdayWrapup } from "../utils/storage.js";
 import AutoTextarea from "./AutoTextarea.jsx";
+
+const formatPrevWrapupDate = (iso) => {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+};
 
 export default function CurrentBlock({
   block,
   now,
   tasks,
+  previousWrapup,
   onTaskChange,
   onResize,
   onShift,
   onStepAway,
   onQuickMeeting,
 }) {
-  const [yesterdayWrapup] = useState(() => loadYesterdayWrapup());
   const [shiftMode, setShiftMode] = useState("resize");
   const priorModeRef = useRef(null);
   const isBreak = block?.type === "break";
@@ -116,8 +124,8 @@ export default function CurrentBlock({
       </div>
 
       {block.id === "plan" &&
-        yesterdayWrapup &&
-        (yesterdayWrapup.left || yesterdayWrapup.next) && (
+        previousWrapup?.wrapup &&
+        (previousWrapup.wrapup.left || previousWrapup.wrapup.next) && (
           <div
             style={{
               background: "#ffffff08",
@@ -139,7 +147,22 @@ export default function CurrentBlock({
                 marginBottom: "10px",
               }}
             >
-              Yesterday's wrap-up
+              Previous wrap-up
+              {previousWrapup.dateISO && (
+                <span
+                  style={{
+                    display: "block",
+                    fontSize: "10px",
+                    color: "#6b7280",
+                    textTransform: "none",
+                    letterSpacing: "0.02em",
+                    fontWeight: "500",
+                    marginTop: "2px",
+                  }}
+                >
+                  {formatPrevWrapupDate(previousWrapup.dateISO)}
+                </span>
+              )}
             </div>
             <div
               style={{
@@ -148,7 +171,7 @@ export default function CurrentBlock({
                 gap: "20px",
               }}
             >
-              {yesterdayWrapup.left && (
+              {previousWrapup.wrapup.left && (
                 <div style={{ flex: 1 }}>
                   <div
                     style={{
@@ -169,16 +192,16 @@ export default function CurrentBlock({
                       lineHeight: 1.45,
                     }}
                   >
-                    {yesterdayWrapup.left}
+                    {previousWrapup.wrapup.left}
                   </div>
                 </div>
               )}
-              {yesterdayWrapup.next && (
+              {previousWrapup.wrapup.next && (
                 <div
                   style={{
                     flex: 1,
-                    paddingLeft: yesterdayWrapup.left ? "20px" : 0,
-                    borderLeft: yesterdayWrapup.left
+                    paddingLeft: previousWrapup.wrapup.left ? "20px" : 0,
+                    borderLeft: previousWrapup.wrapup.left
                       ? "1px solid #ffffff12"
                       : "none",
                   }}
@@ -202,7 +225,7 @@ export default function CurrentBlock({
                       lineHeight: 1.45,
                     }}
                   >
-                    {yesterdayWrapup.next}
+                    {previousWrapup.wrapup.next}
                   </div>
                 </div>
               )}

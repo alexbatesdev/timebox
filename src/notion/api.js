@@ -55,6 +55,13 @@ const fetchBlockChildrenRecursive = async (notionBlocks, token) =>
     }),
   );
 
+const loadSnapshotFromPage = async (page, token) => {
+  const children = await fetchAllBlockChildren(page.id, token);
+  const fullChildren = await fetchBlockChildrenRecursive(children, token);
+  const { snapshot, warnings } = extractSnapshotFromBlocks(fullChildren);
+  return { pageId: page.id, snapshot, warnings };
+};
+
 const queryTodayNotionEntry = async (token) => {
   const dbId = import.meta.env.VITE_NOTION_DATABASE_ID;
   if (!token || !dbId) return null;
@@ -80,18 +87,47 @@ const queryTodayNotionEntry = async (token) => {
   return data.results?.[0] || null;
 };
 
+const queryPreviousNotionEntry = async (token) => {
+  const dbId = import.meta.env.VITE_NOTION_DATABASE_ID;
+  if (!token || !dbId) return null;
+
+  const dateProp = import.meta.env.VITE_NOTION_DATE_PROP || "date";
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const res = await notionFetch(`/databases/${dbId}/query`, token, {
+    method: "POST",
+    body: JSON.stringify({
+      filter: {
+        property: dateProp,
+        date: { before: todayISO },
+      },
+      sorts: [{ property: dateProp, direction: "descending" }],
+      page_size: 1,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `Failed to query Notion (${res.status})`);
+  }
+
+  const data = await res.json();
+  return data.results?.[0] || null;
+};
+
 export const loadTodayFromNotion = async (token) => {
   const page = await queryTodayNotionEntry(token);
   if (!page) return null;
+  return loadSnapshotFromPage(page, token);
+};
 
-  const children = await fetchAllBlockChildren(page.id, token);
-  const fullChildren = await fetchBlockChildrenRecursive(children, token);
-  const { snapshot, warnings } = extractSnapshotFromBlocks(fullChildren);
-  return {
-    pageId: page.id,
-    snapshot,
-    warnings,
-  };
+export const loadPreviousWrapupFromNotion = async (token) => {
+  const page = await queryPreviousNotionEntry(token);
+  if (!page) return null;
+  const dateProp = import.meta.env.VITE_NOTION_DATE_PROP || "date";
+  const dateISO = page.properties?.[dateProp]?.date?.start || null;
+  const { snapshot } = await loadSnapshotFromPage(page, token);
+  const wrapup = snapshot?.wrapup;
+  if (!wrapup || (!wrapup.left && !wrapup.next)) return null;
+  return { wrapup, dateISO };
 };
 
 export const replaceNotionPageContent = async (pageId, token, children) => {

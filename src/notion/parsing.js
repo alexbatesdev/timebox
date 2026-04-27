@@ -48,6 +48,7 @@ export const inferBlockType = (label, childText) => {
   if (label === "Lunch" || label === "Break") return "break";
   if (label.includes("Flex")) return "flex-work";
   if (label === "Plan the day") return "work";
+  if (label === "Standup") return "meeting";
   if (childText.startsWith("Notes:")) return "meeting";
   return "work";
 };
