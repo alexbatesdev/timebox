@@ -23,6 +23,7 @@ export default function BlockList({
       {blocks.map((b, i) => {
         if (i === currentIndex) return null;
         const isPast = now >= b.end;
+        const isPastPlan = isPast && b.id === "plan";
         const btc = TC[b.type] || TC.work;
         const showTask = isWorkType(b.type) || b.type === "meeting";
         const isAddedMeeting = b.id.startsWith("mtg_");
@@ -38,7 +39,7 @@ export default function BlockList({
               border: `1px solid ${isPast ? "#1f1f1f" : "#252525"}`,
               borderRadius: "10px",
               padding: "10px 14px",
-              opacity: isPast ? 0.45 : 1,
+              opacity: isPast && !isPastPlan ? 0.45 : 1,
             }}
           >
             <div
@@ -158,7 +159,7 @@ export default function BlockList({
                 )}
               </div>
             </div>
-            {!isPast && showTask && (
+            {showTask && (!isPast || isPastPlan) && (
               <AutoTextarea
                 value={tasks[b.id] || ""}
                 onChange={(e) => onTaskChange(b.id, e.target.value)}
