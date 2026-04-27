@@ -1,4 +1,5 @@
 import { fmtTime } from "../utils/time.js";
+import AutoTextarea from "./AutoTextarea.jsx";
 
 export default function WrapupSection({ wrapup, wrapBlock, onWrapupChange }) {
   return (
@@ -44,7 +45,7 @@ export default function WrapupSection({ wrapup, wrapBlock, onWrapupChange }) {
           >
             {label}
           </div>
-          <textarea
+          <AutoTextarea
             value={wrapup[k]}
             onChange={(e) => onWrapupChange(k, e.target.value)}
             placeholder={ph}
