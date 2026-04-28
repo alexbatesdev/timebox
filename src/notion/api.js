@@ -1,5 +1,6 @@
 import { NOTION_VERSION } from "./richText.js";
 import { extractSnapshotFromBlocks } from "./parsing.js";
+import { getDateProp } from "./schema.js";
 
 const notionHeaders = (token) => ({
   "Content-Type": "application/json",
@@ -66,7 +67,7 @@ const queryTodayNotionEntry = async (token) => {
   const dbId = import.meta.env.VITE_NOTION_DATABASE_ID;
   if (!token || !dbId) return null;
 
-  const dateProp = import.meta.env.VITE_NOTION_DATE_PROP || "date";
+  const dateProp = getDateProp();
   const todayISO = new Date().toISOString().slice(0, 10);
   const res = await notionFetch(`/databases/${dbId}/query`, token, {
     method: "POST",
@@ -91,7 +92,7 @@ const queryPreviousNotionEntry = async (token) => {
   const dbId = import.meta.env.VITE_NOTION_DATABASE_ID;
   if (!token || !dbId) return null;
 
-  const dateProp = import.meta.env.VITE_NOTION_DATE_PROP || "date";
+  const dateProp = getDateProp();
   const todayISO = new Date().toISOString().slice(0, 10);
   const res = await notionFetch(`/databases/${dbId}/query`, token, {
     method: "POST",
@@ -122,7 +123,7 @@ export const loadTodayFromNotion = async (token) => {
 export const loadPreviousWrapupFromNotion = async (token) => {
   const page = await queryPreviousNotionEntry(token);
   if (!page) return null;
-  const dateProp = import.meta.env.VITE_NOTION_DATE_PROP || "date";
+  const dateProp = getDateProp();
   const dateISO = page.properties?.[dateProp]?.date?.start || null;
   const { snapshot } = await loadSnapshotFromPage(page, token);
   const wrapup = snapshot?.wrapup;

@@ -1,5 +1,6 @@
 import { fmtTimeShort } from "../utils/time.js";
 import { TIMEBOX_STATE_LABEL, toRichText, notionCallout, emojiIcon, workIcon, buildTimeboxSnapshot } from "./richText.js";
+import { getDateProp, getTitleProp } from "./schema.js";
 
 const buildStateBlock = (snapshot) => ({
   object: "block",
@@ -74,8 +75,8 @@ export const buildNotionPayload = (parentPageId, schedType, blocks, tasks, wrapu
   ];
 
   if (dbId) {
-    const titleProp = import.meta.env.VITE_NOTION_TITLE_PROP || "Name";
-    const dateProp = import.meta.env.VITE_NOTION_DATE_PROP || "date";
+    const titleProp = getTitleProp();
+    const dateProp = getDateProp();
     return {
       parent: { database_id: dbId },
       properties: {

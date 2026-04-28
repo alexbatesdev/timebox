@@ -1,4 +1,8 @@
 import { notionFetch } from "./api.js";
+import {
+  getLooseEndsTitleProp as titleProp,
+  getLooseEndsDoneProp as doneProp,
+} from "./schema.js";
 
 const dbId = () => import.meta.env.VITE_NOTION_LOOSE_ENDS_DB;
 const token = () => import.meta.env.VITE_NOTION_TOKEN;
@@ -10,7 +14,7 @@ export const fetchLooseEnds = async () => {
     method: "POST",
     body: JSON.stringify({
       filter: {
-        property: "Done",
+        property: doneProp(),
         checkbox: { equals: false },
       },
       sorts: [{ timestamp: "created_time", direction: "ascending" }],
@@ -18,11 +22,12 @@ export const fetchLooseEnds = async () => {
   });
   if (!res.ok) throw new Error(`Failed to fetch loose ends (${res.status})`);
   const data = await res.json();
+  const tp = titleProp();
   return (data.results || []).map((page) => ({
     id: page.id,
     title:
-      page.properties?.Name?.title?.[0]?.plain_text ||
-      page.properties?.Name?.title?.[0]?.text?.content ||
+      page.properties?.[tp]?.title?.[0]?.plain_text ||
+      page.properties?.[tp]?.title?.[0]?.text?.content ||
       "",
   }));
 };
@@ -33,8 +38,10 @@ export const addLooseEnd = async (title) => {
     body: JSON.stringify({
       parent: { database_id: dbId() },
       properties: {
-        Name: { title: [{ type: "text", text: { content: title } }] },
-        Done: { checkbox: false },
+        [titleProp()]: {
+          title: [{ type: "text", text: { content: title } }],
+        },
+        [doneProp()]: { checkbox: false },
       },
     }),
   });
@@ -47,7 +54,7 @@ export const completeLooseEnd = async (pageId) => {
   const res = await notionFetch(`/pages/${pageId}`, token(), {
     method: "PATCH",
     body: JSON.stringify({
-      properties: { Done: { checkbox: true } },
+      properties: { [doneProp()]: { checkbox: true } },
     }),
   });
   if (!res.ok) throw new Error(`Failed to complete loose end (${res.status})`);
