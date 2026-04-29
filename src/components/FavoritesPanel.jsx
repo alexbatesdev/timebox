@@ -142,23 +142,49 @@ export default function FavoritesPanel({
           border: "1px solid #333",
           borderLeft: "none",
           borderRadius: "0 8px 8px 0",
-          color: "#fde047",
-          fontSize: "14px",
           cursor: "pointer",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           zIndex: 10,
+          padding: 0,
         }}
         title="Favorites"
       >
-        {totalCount > 0 ? (
-          <span style={{ fontSize: "11px", fontWeight: "700" }}>
-            {totalCount}
-          </span>
-        ) : (
-          "★"
-        )}
+        <span
+          style={{
+            position: "relative",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "26px",
+            height: "26px",
+          }}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="26"
+            height="26"
+            fill="#fde047"
+            style={{ position: "absolute", inset: 0 }}
+          >
+            <path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 4.517 1.48-8.279L0 9.306l8.332-1.151z" />
+          </svg>
+          {totalCount > 0 && (
+            <span
+              style={{
+                position: "relative",
+                color: "#1a1a1a",
+                fontSize: "11px",
+                fontWeight: "800",
+                lineHeight: 1,
+                marginTop: "2px",
+              }}
+            >
+              {totalCount}
+            </span>
+          )}
+        </span>
       </button>
 
       {/* Panel content */}
