@@ -15,14 +15,15 @@ export const fetchNotifications = async () => {
   return Array.isArray(data) ? data : [];
 };
 
-export const fetchNoiseNotifications = async () => {
+export const fetchNoiseNotifications = async (noiseReasons) => {
+  const reasonSet = new Set(noiseReasons);
   const since = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString();
   let all = [];
   let page = 1;
   while (true) {
     const data = await ghFetch(`/notifications?all=true&since=${since}&per_page=50&page=${page}`);
     const items = Array.isArray(data) ? data : [];
-    all = all.concat(items.filter((n) => n.reason === "ci_activity"));
+    all = all.concat(items.filter((n) => reasonSet.has(n.reason)));
     if (items.length < 50) break;
     page++;
   }
@@ -58,21 +59,6 @@ export const notificationUrl = (notification) => {
     .replace("https://api.github.com/repos", "https://github.com")
     .replace("/pulls/", "/pull/")
     .replace("/commits/", "/commit/");
-};
-
-const NEW_STUFF = new Set(["review_requested", "assign"]);
-const UPDATES = new Set([
-  "mention",
-  "team_mention",
-  "comment",
-  "author",
-  "state_change",
-]);
-
-export const classifyTier = (reason) => {
-  if (NEW_STUFF.has(reason)) return "new";
-  if (UPDATES.has(reason)) return "updates";
-  return "noise";
 };
 
 const mapPR = (item) => ({

@@ -1,0 +1,87 @@
+export const DEFAULT_NOTIFICATION_RULES = {
+  categories: [
+    {
+      id: "newStuff",
+      label: "New Stuff",
+      reasons: ["review_requested", "assign"],
+      defaultExpanded: true,
+    },
+    {
+      id: "updates",
+      label: "Updates",
+      reasons: ["mention", "team_mention", "comment", "author", "state_change"],
+      defaultExpanded: true,
+    },
+    {
+      id: "noise",
+      label: "Noise",
+      fallback: true,
+      defaultExpanded: false,
+    },
+  ],
+  noiseFilter: ["ci_activity"],
+};
+
+const validateRules = (data) => {
+  if (!data || !Array.isArray(data.categories) || data.categories.length === 0) {
+    return "categories must be a non-empty array";
+  }
+  const fallbackCount = data.categories.filter((c) => c.fallback === true).length;
+  if (fallbackCount !== 1) {
+    return `exactly one category must have "fallback": true (found ${fallbackCount})`;
+  }
+  for (const c of data.categories) {
+    if (!c.id || typeof c.id !== "string") {
+      return "each category needs a string id";
+    }
+    if (!c.label || typeof c.label !== "string") {
+      return `category "${c.id}" needs a string label`;
+    }
+    if (!c.fallback && !Array.isArray(c.reasons)) {
+      return `category "${c.id}" needs a reasons array (or fallback: true)`;
+    }
+  }
+  if (!Array.isArray(data.noiseFilter)) {
+    return "noiseFilter must be an array";
+  }
+  return null;
+};
+
+export const loadNotificationRules = async () => {
+  try {
+    const res = await fetch("/github-notification-rules.json", {
+      cache: "no-store",
+    });
+    if (!res.ok) return DEFAULT_NOTIFICATION_RULES;
+    const data = await res.json();
+    const err = validateRules(data);
+    if (err) {
+      console.warn(
+        `Invalid github-notification-rules.json: ${err}. Using defaults.`,
+      );
+      return DEFAULT_NOTIFICATION_RULES;
+    }
+    return {
+      categories: data.categories.map((c) => ({
+        id: c.id,
+        label: c.label,
+        reasons: c.reasons || [],
+        fallback: !!c.fallback,
+        defaultExpanded: c.defaultExpanded !== false,
+      })),
+      noiseFilter: data.noiseFilter,
+    };
+  } catch (err) {
+    console.warn("Failed to load github-notification-rules.json:", err);
+    return DEFAULT_NOTIFICATION_RULES;
+  }
+};
+
+export const classifyTier = (reason, rules) => {
+  for (const c of rules.categories) {
+    if (c.fallback) continue;
+    if (c.reasons.includes(reason)) return c.id;
+  }
+  const fallback = rules.categories.find((c) => c.fallback);
+  return fallback ? fallback.id : null;
+};

@@ -7,8 +7,12 @@ import {
   fetchReviewRequests,
   markThreadRead,
   markThreadDone,
-  classifyTier,
 } from "../github/api.js";
+import {
+  classifyTier,
+  loadNotificationRules,
+  DEFAULT_NOTIFICATION_RULES,
+} from "../github/rules.js";
 import { usePinned } from "./usePinned.js";
 
 const POLL_INTERVAL = 60_000;
@@ -29,8 +33,19 @@ export const useGitHubNotifications = () => {
   const [notifications, setNotifications] = useState([]);
   const [noiseNotifications, setNoiseNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [rules, setRules] = useState(DEFAULT_NOTIFICATION_RULES);
   const pollTimeoutRef = useRef(null);
   const dismissedRef = useRef(loadDismissed());
+
+  useEffect(() => {
+    let cancelled = false;
+    loadNotificationRules().then((loaded) => {
+      if (!cancelled) setRules(loaded);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const doFetch = useCallback(async () => {
     if (!configured) return;
@@ -146,29 +161,32 @@ export const useGitHubNotifications = () => {
   const loadNoise = useCallback(async () => {
     if (!configured) return;
     try {
-      const data = await fetchNoiseNotifications();
+      const data = await fetchNoiseNotifications(rules.noiseFilter);
       setNoiseNotifications(
         data.filter((n) => !dismissedRef.current.has(n.id)),
       );
     } catch (err) {
       console.error("GitHub noise fetch error:", err);
     }
-  }, [configured]);
+  }, [configured, rules.noiseFilter]);
 
   const grouped = useMemo(() => {
-    const newStuff = [],
-      updates = [],
-      noise = [];
+    const buckets = new Map(rules.categories.map((c) => [c.id, []]));
     const seenIds = new Set();
     for (const n of notifications) {
       seenIds.add(n.id);
-      const tier = classifyTier(n.reason);
-      if (tier === "new") newStuff.push(n);
-      else if (tier === "updates") updates.push(n);
-      else noise.push(n);
+      const tierId = classifyTier(n.reason, rules);
+      const bucket = buckets.get(tierId);
+      if (bucket) bucket.push(n);
     }
-    for (const n of noiseNotifications) {
-      if (!seenIds.has(n.id)) noise.push(n);
+    const fallbackCategory = rules.categories.find((c) => c.fallback);
+    const fallbackBucket = fallbackCategory
+      ? buckets.get(fallbackCategory.id)
+      : null;
+    if (fallbackBucket) {
+      for (const n of noiseNotifications) {
+        if (!seenIds.has(n.id)) fallbackBucket.push(n);
+      }
     }
     const byPinnedThenRecent = (a, b) => {
       const ap = pinnedIds.has(String(a.id)) ? 0 : 1;
@@ -176,11 +194,17 @@ export const useGitHubNotifications = () => {
       if (ap !== bp) return ap - bp;
       return new Date(b.updated_at) - new Date(a.updated_at);
     };
-    newStuff.sort(byPinnedThenRecent);
-    updates.sort(byPinnedThenRecent);
-    noise.sort(byPinnedThenRecent);
-    return { newStuff, updates, noise };
-  }, [notifications, noiseNotifications, pinnedIds]);
+    return rules.categories.map((c) => {
+      const items = buckets.get(c.id) || [];
+      items.sort(byPinnedThenRecent);
+      return {
+        id: c.id,
+        label: c.label,
+        defaultExpanded: c.defaultExpanded !== false,
+        items,
+      };
+    });
+  }, [notifications, noiseNotifications, pinnedIds, rules]);
 
   const sortedPrs = useMemo(() => {
     const byPinned = (a, b) => {

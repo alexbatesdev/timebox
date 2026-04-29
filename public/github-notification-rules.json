@@ -1,0 +1,29 @@
+{
+  "categories": [
+    {
+      "id": "newStuff",
+      "label": "New Stuff",
+      "reasons": ["review_requested", "assign"],
+      "defaultExpanded": true
+    },
+    {
+      "id": "updates",
+      "label": "Updates",
+      "reasons": [
+        "mention",
+        "team_mention",
+        "comment",
+        "author",
+        "state_change"
+      ],
+      "defaultExpanded": true
+    },
+    {
+      "id": "noise",
+      "label": "Noise",
+      "fallback": true,
+      "defaultExpanded": false
+    }
+  ],
+  "noiseFilter": ["ci_activity"]
+}

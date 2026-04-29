@@ -963,11 +963,7 @@ export default function GitHubPanel({
           <CollapsibleSection
             title="Notifications"
             detail={(() => {
-              const all = [
-                ...grouped.newStuff,
-                ...grouped.updates,
-                ...grouped.noise,
-              ];
+              const all = grouped.flatMap((g) => g.items);
               const unread = all.filter((n) => n.unread).length;
               const read = all.length - unread;
               const parts = [];
@@ -976,54 +972,25 @@ export default function GitHubPanel({
               return parts.join(", ") || null;
             })()}
           >
-            <TierSection
-              title="New Stuff"
-              items={grouped.newStuff}
-              defaultExpanded
-              onMarkRead={onMarkRead}
-              onMarkAllRead={onMarkAllRead}
-              onDeleteAll={onDeleteAll}
-              confirmDeleteId={confirmDeleteId}
-              onConfirmDelete={handleConfirmDelete}
-              pinnedIds={pinnedIds}
-              onTogglePin={onTogglePin}
-              expandedId={expandedId}
-              onToggleExpand={handleToggleExpand}
-              getNote={getNote}
-              setNote={setNote}
-            />
-            <TierSection
-              title="Updates"
-              items={grouped.updates}
-              defaultExpanded
-              onMarkRead={onMarkRead}
-              onMarkAllRead={onMarkAllRead}
-              onDeleteAll={onDeleteAll}
-              confirmDeleteId={confirmDeleteId}
-              onConfirmDelete={handleConfirmDelete}
-              pinnedIds={pinnedIds}
-              onTogglePin={onTogglePin}
-              expandedId={expandedId}
-              onToggleExpand={handleToggleExpand}
-              getNote={getNote}
-              setNote={setNote}
-            />
-            <TierSection
-              title="Noise"
-              items={grouped.noise}
-              defaultExpanded={false}
-              onMarkRead={onMarkRead}
-              onMarkAllRead={onMarkAllRead}
-              onDeleteAll={onDeleteAll}
-              confirmDeleteId={confirmDeleteId}
-              onConfirmDelete={handleConfirmDelete}
-              pinnedIds={pinnedIds}
-              onTogglePin={onTogglePin}
-              expandedId={expandedId}
-              onToggleExpand={handleToggleExpand}
-              getNote={getNote}
-              setNote={setNote}
-            />
+            {grouped.map((g) => (
+              <TierSection
+                key={g.id}
+                title={g.label}
+                items={g.items}
+                defaultExpanded={g.defaultExpanded}
+                onMarkRead={onMarkRead}
+                onMarkAllRead={onMarkAllRead}
+                onDeleteAll={onDeleteAll}
+                confirmDeleteId={confirmDeleteId}
+                onConfirmDelete={handleConfirmDelete}
+                pinnedIds={pinnedIds}
+                onTogglePin={onTogglePin}
+                expandedId={expandedId}
+                onToggleExpand={handleToggleExpand}
+                getNote={getNote}
+                setNote={setNote}
+              />
+            ))}
           </CollapsibleSection>
           <CollapsibleSection
             title="Pull Requests"
