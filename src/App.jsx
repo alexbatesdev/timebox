@@ -32,6 +32,7 @@ import QuickMeetingModal from "./components/QuickMeetingModal.jsx";
 import LooseEndsPanel from "./components/LooseEndsPanel.jsx";
 import TeamworkPanel from "./components/TeamworkPanel.jsx";
 import GitHubPanel from "./components/GitHubPanel.jsx";
+import FavoritesPanel from "./components/FavoritesPanel.jsx";
 
 /* ── app ──────────────────────────────────────────────────── */
 export default function App() {
@@ -64,6 +65,7 @@ export default function App() {
   const [looseEndsManualState, setLooseEndsManualState] = useState(null);
   const [teamworkOpen, setTeamworkOpen] = useState(false);
   const [githubOpen, setGithubOpen] = useState(false);
+  const [favoritesOpen, setFavoritesOpen] = useState(false);
   const [showQuickMtgModal, setShowQuickMtgModal] = useState(false);
   const [quickMtgStart, setQuickMtgStart] = useState(null);
   const [quickMtgLabel, setQuickMtgLabel] = useState("");
@@ -550,7 +552,8 @@ export default function App() {
     const tw = overrides.teamwork ?? teamworkOpen;
     const gh = overrides.github ?? githubOpen;
     const le = overrides.looseEnds ?? looseEndsOpen;
-    return (tw ? 1 : 0) + (gh ? 1 : 0) + (le ? 1 : 0);
+    const fv = overrides.favorites ?? favoritesOpen;
+    return (tw ? 1 : 0) + (gh ? 1 : 0) + (le ? 1 : 0) + (fv ? 1 : 0);
   };
 
   const handleLooseEndsToggle = (open) => {
@@ -560,7 +563,22 @@ export default function App() {
       if (w < 1600) {
         setTeamworkOpen(false);
         setGithubOpen(false);
+        setFavoritesOpen(false);
       } else if (w < 2080 && countOpenPanels({ looseEnds: true }) > 2) {
+        setGithubOpen(false);
+      }
+    }
+  };
+
+  const handleFavoritesToggle = (open) => {
+    setFavoritesOpen(open);
+    if (open) {
+      const w = window.innerWidth;
+      if (w < 1600) {
+        setTeamworkOpen(false);
+        setGithubOpen(false);
+        setLooseEndsManualState(false);
+      } else if (w < 2080 && countOpenPanels({ favorites: true }) > 2) {
         setGithubOpen(false);
       }
     }
@@ -573,6 +591,7 @@ export default function App() {
       if (w < 1600) {
         setLooseEndsManualState(false);
         setGithubOpen(false);
+        setFavoritesOpen(false);
       } else if (w < 2080 && countOpenPanels({ teamwork: true }) > 2) {
         setGithubOpen(false);
       }
@@ -586,6 +605,7 @@ export default function App() {
       if (w < 1600) {
         setTeamworkOpen(false);
         setLooseEndsManualState(false);
+        setFavoritesOpen(false);
       } else if (w < 2080 && countOpenPanels({ github: true }) > 2) {
         setTeamworkOpen(false);
       }
@@ -631,6 +651,29 @@ export default function App() {
   const handleWrapupChange = (key, value) => {
     setWrapup((p) => ({ ...p, [key]: value }));
   };
+
+  const favoriteLooseEnds = looseEnds.items.filter((i) =>
+    looseEnds.pinnedIds.has(String(i.id)),
+  );
+  const favoriteTeamworkTasks = teamwork.tasks.filter((t) =>
+    teamwork.pinnedIds.has(String(t.id)),
+  );
+  const allGhNotifs = (github.grouped || []).flatMap((g) => g.items || []);
+  const favoriteGithubNotifs = allGhNotifs.filter((n) =>
+    github.pinnedIds.has(String(n.id)),
+  );
+  const favoriteMyPRs = (github.prs?.mine || []).filter((pr) =>
+    github.pinnedIds.has(String(pr.id)),
+  );
+  const favoriteReviewRequestPRs = (github.prs?.reviewRequests || []).filter(
+    (pr) => github.pinnedIds.has(String(pr.id)),
+  );
+  const favoriteCount =
+    favoriteLooseEnds.length +
+    favoriteTeamworkTasks.length +
+    favoriteGithubNotifs.length +
+    favoriteMyPRs.length +
+    favoriteReviewRequestPRs.length;
 
   return (
     <div
@@ -812,17 +855,61 @@ export default function App() {
           onSendToNotion={sendToNotion}
         />
       </div>
-      <LooseEndsPanel
-        open={looseEndsOpen}
-        onToggle={handleLooseEndsToggle}
-        items={looseEnds.items}
-        loading={looseEnds.loading}
-        onAdd={looseEnds.addItem}
-        onComplete={looseEnds.completeItem}
-        onDelete={looseEnds.deleteItem}
-        pinnedIds={looseEnds.pinnedIds}
-        onTogglePin={looseEnds.togglePin}
-      />
+      <div
+        style={{
+          width:
+            looseEndsOpen && favoritesOpen
+              ? "calc(900px + 32px)"
+              : looseEndsOpen || favoritesOpen
+                ? "calc(450px + 32px)"
+                : "32px",
+          flexShrink: 0,
+          transition: "width 0.25s ease",
+          position: "relative",
+          alignSelf: "stretch",
+          zIndex: 1,
+        }}
+      >
+        <LooseEndsPanel
+          open={looseEndsOpen}
+          onToggle={handleLooseEndsToggle}
+          items={looseEnds.items}
+          loading={looseEnds.loading}
+          onAdd={looseEnds.addItem}
+          onComplete={looseEnds.completeItem}
+          onDelete={looseEnds.deleteItem}
+          pinnedIds={looseEnds.pinnedIds}
+          onTogglePin={looseEnds.togglePin}
+          panelRight={favoritesOpen ? 480 : 30}
+        />
+        <FavoritesPanel
+          open={favoritesOpen}
+          onToggle={handleFavoritesToggle}
+          totalCount={favoriteCount}
+          favoriteLooseEnds={favoriteLooseEnds}
+          loosePinnedIds={looseEnds.pinnedIds}
+          onCompleteLoose={looseEnds.completeItem}
+          onDeleteLoose={looseEnds.deleteItem}
+          onTogglePinLoose={looseEnds.togglePin}
+          favoriteTeamworkTasks={favoriteTeamworkTasks}
+          twPinnedIds={teamwork.pinnedIds}
+          workflowData={teamwork.workflowData}
+          onTogglePinTask={teamwork.togglePin}
+          onToggleExpanded={teamwork.toggleExpanded}
+          onToggleDescExpanded={teamwork.toggleDescExpanded}
+          onLoadWorkflowStages={teamwork.loadWorkflowStages}
+          onChangeStage={teamwork.changeStage}
+          ghPinnedIds={github.pinnedIds}
+          favoriteGithubNotifs={favoriteGithubNotifs}
+          favoriteMyPRs={favoriteMyPRs}
+          favoriteReviewRequestPRs={favoriteReviewRequestPRs}
+          onMarkRead={github.markRead}
+          onMarkDone={github.markDone}
+          onTogglePinGh={github.togglePin}
+          onLoadNoise={github.loadNoise}
+          onLoadPRs={github.loadPRs}
+        />
+      </div>
     </div>
   );
 }

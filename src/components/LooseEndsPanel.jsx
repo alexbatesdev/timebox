@@ -2,6 +2,100 @@ import { useState } from "react";
 import { useNotes } from "../hooks/useNotes.js";
 import NotesSection from "./NotesSection.jsx";
 
+export function LooseEndItem({ item, pinnedIds, onComplete, onDelete, onTogglePin }) {
+  const { getNote, setNote } = useNotes("timebox-le-notes");
+  const pinned = pinnedIds?.has(item.id);
+  return (
+    <div
+      style={{
+        padding: "10px 16px",
+        borderBottom: "1px solid #1f1f1f",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          gap: "8px",
+        }}
+      >
+        <button
+          onClick={() => onComplete(item.id)}
+          title="Mark done"
+          style={{
+            background: "none",
+            border: "1px solid #333",
+            borderRadius: "4px",
+            width: "20px",
+            height: "20px",
+            cursor: "pointer",
+            color: "#6b7280",
+            fontSize: "12px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            marginTop: "1px",
+            padding: 0,
+          }}
+        >
+          ✓
+        </button>
+        <span
+          style={{
+            flex: 1,
+            fontSize: "13px",
+            color: pinned ? "#fde047" : "#d1d5db",
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+            textAlign: "left",
+          }}
+        >
+          {item.title}
+        </span>
+        <button
+          onClick={() => onTogglePin(item.id)}
+          title={pinned ? "Unpin" : "Pin"}
+          style={{
+            background: "none",
+            border: "none",
+            color: pinned ? "#fde047" : "#4b5563",
+            cursor: "pointer",
+            fontSize: "13px",
+            padding: "0 2px",
+            flexShrink: 0,
+            marginTop: "1px",
+          }}
+        >
+          {pinned ? "★" : "☆"}
+        </button>
+        <button
+          onClick={() => onDelete(item.id)}
+          title="Delete"
+          style={{
+            background: "none",
+            border: "none",
+            color: "#ef4444",
+            cursor: "pointer",
+            fontSize: "13px",
+            padding: "0 2px",
+            flexShrink: 0,
+            marginTop: "1px",
+          }}
+        >
+          ✕
+        </button>
+      </div>
+      <div style={{ marginLeft: "28px", marginTop: "4px" }}>
+        <NotesSection
+          noteText={getNote(item.id)}
+          onNoteChange={(text) => setNote(item.id, text)}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function LooseEndsPanel({
   open,
   onToggle,
@@ -12,9 +106,9 @@ export default function LooseEndsPanel({
   onDelete,
   pinnedIds,
   onTogglePin,
+  panelRight = 30,
 }) {
   const [input, setInput] = useState("");
-  const { getNote, setNote } = useNotes("timebox-le-notes");
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -24,16 +118,7 @@ export default function LooseEndsPanel({
   };
 
   return (
-    <div
-      style={{
-        width: open ? "calc(450px + 32px)" : "32px",
-        flexShrink: 0,
-        transition: "width 0.25s ease",
-        position: "relative",
-        alignSelf: "stretch",
-        zIndex: 1,
-      }}
-    >
+    <>
       {/* Tab */}
       <button
         onClick={() => onToggle(!open)}
@@ -70,7 +155,7 @@ export default function LooseEndsPanel({
       <div
         style={{
           position: "absolute",
-          right: open ? "30px" : "32px",
+          right: open ? `${panelRight}px` : "32px",
           top: "16px",
           bottom: "16px",
           width: "450px",
@@ -181,97 +266,17 @@ export default function LooseEndsPanel({
             </div>
           )}
           {items.map((item) => (
-            <div
+            <LooseEndItem
               key={item.id}
-              style={{
-                padding: "10px 16px",
-                borderBottom: "1px solid #1f1f1f",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: "8px",
-                }}
-              >
-                <button
-                  onClick={() => onComplete(item.id)}
-                  title="Mark done"
-                  style={{
-                    background: "none",
-                    border: "1px solid #333",
-                    borderRadius: "4px",
-                    width: "20px",
-                    height: "20px",
-                    cursor: "pointer",
-                    color: "#6b7280",
-                    fontSize: "12px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                    marginTop: "1px",
-                    padding: 0,
-                  }}
-                >
-                  ✓
-                </button>
-                <span
-                  style={{
-                    flex: 1,
-                    fontSize: "13px",
-                    color: pinnedIds?.has(item.id) ? "#fde047" : "#d1d5db",
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                    textAlign: "left",
-                  }}
-                >
-                  {item.title}
-                </span>
-                <button
-                  onClick={() => onTogglePin(item.id)}
-                  title={pinnedIds?.has(item.id) ? "Unpin" : "Pin"}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: pinnedIds?.has(item.id) ? "#fde047" : "#4b5563",
-                    cursor: "pointer",
-                    fontSize: "13px",
-                    padding: "0 2px",
-                    flexShrink: 0,
-                    marginTop: "1px",
-                  }}
-                >
-                  {pinnedIds?.has(item.id) ? "★" : "☆"}
-                </button>
-                <button
-                  onClick={() => onDelete(item.id)}
-                  title="Delete"
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "#ef4444",
-                    cursor: "pointer",
-                    fontSize: "13px",
-                    padding: "0 2px",
-                    flexShrink: 0,
-                    marginTop: "1px",
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-              <div style={{ marginLeft: "28px", marginTop: "4px" }}>
-                <NotesSection
-                  noteText={getNote(item.id)}
-                  onNoteChange={(text) => setNote(item.id, text)}
-                />
-              </div>
-            </div>
+              item={item}
+              pinnedIds={pinnedIds}
+              onComplete={onComplete}
+              onDelete={onDelete}
+              onTogglePin={onTogglePin}
+            />
           ))}
         </div>
       </div>
-    </div>
+    </>
   );
 }

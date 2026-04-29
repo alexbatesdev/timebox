@@ -304,7 +304,7 @@ function TaskRow({
   );
 }
 
-function TaskNode({
+export function TaskNode({
   task,
   onToggleExpanded,
   onToggleDescExpanded,
