@@ -116,10 +116,7 @@ export default function App() {
     try {
       previous = await loadPreviousWrapupFromNotion(token);
     } catch (err) {
-      showToast(
-        `Notion previous-wrap-up load failed: ${err.message}`,
-        "warn",
-      );
+      showToast(`Notion previous-wrap-up load failed: ${err.message}`, "warn");
     }
     if (!previous) previous = loadPreviousWrapup();
     setPreviousWrapup(previous);
@@ -139,9 +136,7 @@ export default function App() {
         setNotionPageId(notionState.pageId);
         clearNotified();
         if (notionState.warnings?.length) {
-          const lines = notionState.warnings
-            .map((w) => `"${w}"`)
-            .join(", ");
+          const lines = notionState.warnings.map((w) => `"${w}"`).join(", ");
           showToast(
             `Notion: skipped ${notionState.warnings.length} malformed line(s): ${lines}`,
             "warn",
@@ -499,8 +494,10 @@ export default function App() {
         });
         if (!updateRes.ok) {
           const err = await updateRes.json().catch(() => ({}));
-          if (updateRes.status === 401) showToast("⚠️ Invalid Notion token", "warn");
-          else if (updateRes.status === 404) showToast("⚠️ Parent page not found", "warn");
+          if (updateRes.status === 401)
+            showToast("⚠️ Invalid Notion token", "warn");
+          else if (updateRes.status === 404)
+            showToast("⚠️ Parent page not found", "warn");
           else showToast(`⚠️ ${err.message || updateRes.status}`, "warn");
         } else {
           await replaceNotionPageContent(notionPageId, token, payload.children);
@@ -513,8 +510,10 @@ export default function App() {
         });
         if (!createRes.ok) {
           const err = await createRes.json().catch(() => ({}));
-          if (createRes.status === 401) showToast("⚠️ Invalid Notion token", "warn");
-          else if (createRes.status === 404) showToast("⚠️ Parent page not found", "warn");
+          if (createRes.status === 401)
+            showToast("⚠️ Invalid Notion token", "warn");
+          else if (createRes.status === 404)
+            showToast("⚠️ Parent page not found", "warn");
           else showToast(`⚠️ ${err.message || createRes.status}`, "warn");
         } else {
           const created = await createRes.json();
@@ -545,6 +544,7 @@ export default function App() {
   /* ── auto-open loose ends panel ────────────────────── */
   const curBlockKey = blocks[getCurIdx()]?.id;
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLooseEndsManualState(null);
   }, [curBlockKey]);
 
