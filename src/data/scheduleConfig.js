@@ -1,4 +1,9 @@
-import { toMin, parseTimeStr } from "../utils/time.js";
+import {
+  toMin,
+  parseTimeStr,
+  TIME_FORMATS,
+  DEFAULT_TIME_FORMAT,
+} from "../utils/time.js";
 
 const VALID_TYPES = new Set(["work", "flex-work", "break", "meeting", "wrapup"]);
 
@@ -38,6 +43,7 @@ const DEFAULT_SCHEDULES = {
 
 const SCHEDULE_CONFIG = {
   defaultType: "noStandup",
+  timeFormat: DEFAULT_TIME_FORMAT,
   days: {
     monday: "standup",
     tuesday: "noStandup",
@@ -50,15 +56,15 @@ const SCHEDULE_CONFIG = {
   schedules: DEFAULT_SCHEDULES,
 };
 
-const parseBlockDef = (b) => ({
+const parseBlockDef = (b, format) => ({
   id: b.id,
   label: b.label,
-  start: typeof b.start === "string" ? parseTimeStr(b.start) : b.start,
-  end: typeof b.end === "string" ? parseTimeStr(b.end) : b.end,
+  start: typeof b.start === "string" ? parseTimeStr(b.start, format) : b.start,
+  end: typeof b.end === "string" ? parseTimeStr(b.end, format) : b.end,
   type: VALID_TYPES.has(b.type) ? b.type : "work",
 });
 
-const parseSchedules = (raw) => {
+const parseSchedules = (raw, format) => {
   if (!raw || typeof raw !== "object") return DEFAULT_SCHEDULES;
   const result = {};
   for (const [key, sched] of Object.entries(raw)) {
@@ -66,10 +72,19 @@ const parseSchedules = (raw) => {
     result[key] = {
       label: sched.label || key,
       emoji: sched.emoji || "",
-      blocks: sched.blocks.map(parseBlockDef),
+      blocks: sched.blocks.map((b) => parseBlockDef(b, format)),
     };
   }
   return Object.keys(result).length > 0 ? result : DEFAULT_SCHEDULES;
+};
+
+const resolveTimeFormat = (raw) => {
+  if (raw === undefined) return DEFAULT_TIME_FORMAT;
+  if (TIME_FORMATS.includes(raw)) return raw;
+  console.warn(
+    `[schedule-config] Unknown timeFormat "${raw}", falling back to "${DEFAULT_TIME_FORMAT}". Allowed: ${TIME_FORMATS.join(", ")}.`,
+  );
+  return DEFAULT_TIME_FORMAT;
 };
 
 export const loadScheduleConfig = async () => {
@@ -77,10 +92,12 @@ export const loadScheduleConfig = async () => {
     const res = await fetch("/schedule-config.json", { cache: "no-store" });
     if (!res.ok) return SCHEDULE_CONFIG;
     const data = await res.json();
-    const schedules = parseSchedules(data.schedules);
+    const timeFormat = resolveTimeFormat(data.timeFormat);
+    const schedules = parseSchedules(data.schedules, timeFormat);
     const scheduleTypes = Object.keys(schedules);
     return {
       defaultType: scheduleTypes.includes(data.defaultType) ? data.defaultType : scheduleTypes[0],
+      timeFormat,
       days: { ...SCHEDULE_CONFIG.days, ...(data.days || {}) },
       schedules,
     };

@@ -1,4 +1,4 @@
-import { fmtTimeShort } from "../utils/time.js";
+import { fmtTimeShort, DEFAULT_TIME_FORMAT } from "../utils/time.js";
 import { TIMEBOX_STATE_LABEL, toRichText, notionCallout, emojiIcon, workIcon, buildTimeboxSnapshot } from "./richText.js";
 import { getDateProp, getTitleProp } from "./schema.js";
 
@@ -20,14 +20,14 @@ const buildStateBlock = (snapshot) => ({
   },
 });
 
-export const buildNotionPayload = (parentPageId, schedType, blocks, tasks, wrapup) => {
+export const buildNotionPayload = (parentPageId, schedType, blocks, tasks, wrapup, format = DEFAULT_TIME_FORMAT) => {
   const modeLabel = schedType === "standup" ? "M" : "T";
   const children = [
     buildStateBlock(buildTimeboxSnapshot(schedType, blocks, tasks, wrapup)),
   ];
 
   for (const b of blocks) {
-    const timeStr = `${fmtTimeShort(b.start)}-${fmtTimeShort(b.end)}`;
+    const timeStr = `${fmtTimeShort(b.start, format)}-${fmtTimeShort(b.end, format)}`;
     const task = tasks[b.id] || "";
     const callouts = [];
 

@@ -1,9 +1,9 @@
-import { fmtTimeShort } from "../utils/time.js";
+import { fmtTimeShort, DEFAULT_TIME_FORMAT } from "../utils/time.js";
 
-export const buildMarkdown = (blocks, tasks, wrapup) => {
+export const buildMarkdown = (blocks, tasks, wrapup, format = DEFAULT_TIME_FORMAT) => {
   let md = "";
   for (const b of blocks) {
-    const timeStr = `${fmtTimeShort(b.start)}-${fmtTimeShort(b.end)}`;
+    const timeStr = `${fmtTimeShort(b.start, format)}-${fmtTimeShort(b.end, format)}`;
     const task = tasks[b.id] || "";
     md += `- ${timeStr}: ${b.label}\n`;
     if (b.type === "work" || b.type === "flex-work") {

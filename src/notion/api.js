@@ -1,6 +1,7 @@
 import { NOTION_VERSION } from "./richText.js";
 import { extractSnapshotFromBlocks } from "./parsing.js";
 import { getDateProp } from "./schema.js";
+import { DEFAULT_TIME_FORMAT } from "../utils/time.js";
 
 const notionHeaders = (token) => ({
   "Content-Type": "application/json",
@@ -56,10 +57,10 @@ const fetchBlockChildrenRecursive = async (notionBlocks, token) =>
     }),
   );
 
-const loadSnapshotFromPage = async (page, token) => {
+const loadSnapshotFromPage = async (page, token, format) => {
   const children = await fetchAllBlockChildren(page.id, token);
   const fullChildren = await fetchBlockChildrenRecursive(children, token);
-  const { snapshot, warnings } = extractSnapshotFromBlocks(fullChildren);
+  const { snapshot, warnings } = extractSnapshotFromBlocks(fullChildren, format);
   return { pageId: page.id, snapshot, warnings };
 };
 
@@ -114,18 +115,18 @@ const queryPreviousNotionEntry = async (token) => {
   return data.results?.[0] || null;
 };
 
-export const loadTodayFromNotion = async (token) => {
+export const loadTodayFromNotion = async (token, format = DEFAULT_TIME_FORMAT) => {
   const page = await queryTodayNotionEntry(token);
   if (!page) return null;
-  return loadSnapshotFromPage(page, token);
+  return loadSnapshotFromPage(page, token, format);
 };
 
-export const loadPreviousWrapupFromNotion = async (token) => {
+export const loadPreviousWrapupFromNotion = async (token, format = DEFAULT_TIME_FORMAT) => {
   const page = await queryPreviousNotionEntry(token);
   if (!page) return null;
   const dateProp = getDateProp();
   const dateISO = page.properties?.[dateProp]?.date?.start || null;
-  const { snapshot } = await loadSnapshotFromPage(page, token);
+  const { snapshot } = await loadSnapshotFromPage(page, token, format);
   const wrapup = snapshot?.wrapup;
   if (!wrapup || (!wrapup.left && !wrapup.next)) return null;
   return { wrapup, dateISO };

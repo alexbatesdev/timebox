@@ -26,9 +26,14 @@ export const useScheduleInit = ({
     const applyConfig = async () => {
       const token = import.meta.env.VITE_NOTION_TOKEN;
 
+      const config = await loadScheduleConfig();
+      if (cancelled) return;
+      setConfig(config);
+      const { timeFormat } = config;
+
       let previous = null;
       try {
-        previous = await loadPreviousWrapupFromNotion(token);
+        previous = await loadPreviousWrapupFromNotion(token, timeFormat);
       } catch (err) {
         showToast?.(
           `Notion previous-wrap-up load failed: ${err.message}`,
@@ -47,16 +52,13 @@ export const useScheduleInit = ({
         setWrapup(saved.wrapup ?? { left: "", next: "" });
         setNotionPageId(saved.notionPageId ?? null);
         clearNotified();
-        // Still load config for labels/emoji/schedule templates
-        const config = await loadScheduleConfig();
-        if (!cancelled) setConfig(config);
         setConfigStatus("ready");
         return;
       }
 
       let notionState = null;
       try {
-        notionState = await loadTodayFromNotion(token);
+        notionState = await loadTodayFromNotion(token, timeFormat);
       } catch (err) {
         showToast?.(`Notion load failed: ${err.message}`, "warn");
       }
@@ -76,16 +78,9 @@ export const useScheduleInit = ({
             "warn",
           );
         }
-        const config = await loadScheduleConfig();
-        if (!cancelled) setConfig(config);
         setConfigStatus("ready");
         return;
       }
-
-      const config = await loadScheduleConfig();
-      if (cancelled) return;
-
-      setConfig(config);
 
       const weekday = getWeekdayKey();
       const nextType =

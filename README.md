@@ -39,6 +39,33 @@ Example:
 
 Allowed values are `standup` and `noStandup`. If a day is omitted or invalid, the app falls back to `defaultType`.
 
+### Time Format
+
+Set `timeFormat` in `schedule-config.json` to control how time strings are parsed (in the config and from Notion) and how they are written back to Notion / markdown exports. The in-app UI always displays times as 12-hour with `AM`/`PM`.
+
+| Value              | Config / Notion text       | Notes                                                                                                                  |
+| ------------------ | -------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `lazyOpinionated`  | `9:00`, `1:15`, `4:45`     | **Default.** Bare numbers, no AM/PM. Hours 1–8 are interpreted as PM. Only round-trips correctly between 9 AM and 8 PM. |
+| `12h`              | `9:00 AM`, `1:15 PM`       | Explicit AM/PM suffix required. Unambiguous.                                                                           |
+| `24h`              | `09:00`, `13:15`, `16:45`  | 24-hour, zero-padded. Unambiguous.                                                                                     |
+
+Example:
+
+```json
+{
+  "timeFormat": "12h",
+  "schedules": {
+    "standup": {
+      "blocks": [
+        { "id": "plan", "label": "Plan the day", "start": "9:00 AM", "end": "9:30 AM", "type": "work" }
+      ]
+    }
+  }
+}
+```
+
+If `timeFormat` is omitted or unknown, it falls back to `lazyOpinionated`. The format applies to both reads (parsing config strings, parsing legacy Notion block titles) and writes (Notion block titles, markdown exports), so changing it requires either rewriting your config strings or letting the app re-emit them on the next Notion send.
+
 ## Commands
 
 - `npm run dev`
@@ -51,4 +78,4 @@ The app currently bakes in a few of the original author's preferences. These are
 
 - [ ] **Default schedules are personal** (`src/data/scheduleConfig.js:5-51`) — block names "Block A/B/C/D", 9–5 workday, lunch 12:45–1:15. Ship a generic template, or add a first-run setup flow.
 - [ ] **Block label parsing is fragile** (`src/notion/parsing.js:78-93`) — string-matches "Plan the day", "Standup", "Wrap up", "Lunch", "Break". Rename a block in Notion and parsing silently breaks.
-- [ ] **Locale assumptions** in `src/utils/time.js` — hardcoded `en-US`, 12-hour format, and `workdayHour()` assumes hours 1–8 mean PM.
+- [ ] **In-app UI is hardcoded 12-hour with AM/PM** (`src/utils/time.js:fmtTime`) — the schedule-config `timeFormat` controls config/Notion/markdown round-tripping, but the header and block list always render as 12h. A user who picks `24h` for their config will still see 12h in the UI.

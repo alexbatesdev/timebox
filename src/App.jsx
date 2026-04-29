@@ -112,9 +112,13 @@ export default function App() {
     const token = import.meta.env.VITE_NOTION_TOKEN;
     const dbId = import.meta.env.VITE_NOTION_DATABASE_ID;
 
+    const freshConfig = await loadScheduleConfig();
+    setConfig(freshConfig);
+    const { timeFormat } = freshConfig;
+
     let previous = null;
     try {
-      previous = await loadPreviousWrapupFromNotion(token);
+      previous = await loadPreviousWrapupFromNotion(token, timeFormat);
     } catch (err) {
       showToast(`Notion previous-wrap-up load failed: ${err.message}`, "warn");
     }
@@ -124,7 +128,7 @@ export default function App() {
     if (token && dbId) {
       let notionState = null;
       try {
-        notionState = await loadTodayFromNotion(token);
+        notionState = await loadTodayFromNotion(token, timeFormat);
       } catch (err) {
         showToast(`Notion load failed: ${err.message}`, "warn");
       }
@@ -142,8 +146,6 @@ export default function App() {
             "warn",
           );
         }
-        const freshConfig = await loadScheduleConfig();
-        setConfig(freshConfig);
         setConfigStatus("ready");
         return;
       }
@@ -152,8 +154,6 @@ export default function App() {
       }
     }
 
-    const freshConfig = await loadScheduleConfig();
-    setConfig(freshConfig);
     const weekday = getWeekdayKey();
     const nextType =
       freshConfig.days[weekday] !== undefined
@@ -461,7 +461,7 @@ export default function App() {
 
   /* ── notion export ──────────────────────────────────── */
   const copyMarkdown = async () => {
-    const md = buildMarkdown(blocks, tasks, wrapup);
+    const md = buildMarkdown(blocks, tasks, wrapup, config?.timeFormat);
     await navigator.clipboard.writeText(md);
     showToast("✅ Copied to clipboard!", "info");
   };
@@ -485,6 +485,7 @@ export default function App() {
         blocks,
         tasks,
         wrapup,
+        config?.timeFormat,
       );
 
       if (notionPageId) {

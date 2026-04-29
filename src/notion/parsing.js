@@ -1,4 +1,9 @@
-import { toMin, workdayHour } from "../utils/time.js";
+import {
+  toMin,
+  parseTimeStr,
+  timePatternFor,
+  DEFAULT_TIME_FORMAT,
+} from "../utils/time.js";
 import { TIMEBOX_STATE_LABEL } from "./richText.js";
 
 export const notionRichTextToPlain = (richText = []) =>
@@ -26,15 +31,21 @@ export const parseSnapshotText = (text) => {
   }
 };
 
-export const parseTimeRange = (text) => {
-  const match = text.match(/^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2}):\s*(.+)$/);
+export const parseTimeRange = (text, format = DEFAULT_TIME_FORMAT) => {
+  const bit = timePatternFor(format);
+  const pattern = new RegExp(`^(${bit})-(${bit}):\\s*(.+)$`, "i");
+  const match = text.match(pattern);
   if (!match) return null;
-  const [, sh, sm, eh, em, label] = match;
-  return {
-    start: workdayHour(Number(sh)) * 60 + Number(sm),
-    end: workdayHour(Number(eh)) * 60 + Number(em),
-    label: label.trim(),
-  };
+  const [, startStr, endStr, label] = match;
+  try {
+    return {
+      start: parseTimeStr(startStr, format),
+      end: parseTimeStr(endStr, format),
+      label: label.trim(),
+    };
+  } catch {
+    return null;
+  }
 };
 
 export const inferSchedTypeFromBlocks = (parsedBlocks) => {
@@ -53,7 +64,7 @@ export const inferBlockType = (label, childText) => {
   return "work";
 };
 
-export const parseLegacyNotionBlocks = (notionBlocks) => {
+export const parseLegacyNotionBlocks = (notionBlocks, format = DEFAULT_TIME_FORMAT) => {
   const parsedBlocks = [];
   const tasks = {};
   const wrapup = { left: "", next: "" };
@@ -64,7 +75,7 @@ export const parseLegacyNotionBlocks = (notionBlocks) => {
     const title = notionRichTextToPlain(block.toggle?.rich_text);
     if (title === TIMEBOX_STATE_LABEL) continue;
 
-    const parsedTitle = parseTimeRange(title);
+    const parsedTitle = parseTimeRange(title, format);
     if (!parsedTitle) {
       warnings.push(title);
       continue;
@@ -125,7 +136,7 @@ export const parseLegacyNotionBlocks = (notionBlocks) => {
   return { snapshot, warnings };
 };
 
-export const extractSnapshotFromBlocks = (notionBlocks) => {
+export const extractSnapshotFromBlocks = (notionBlocks, format = DEFAULT_TIME_FORMAT) => {
   const stateToggle = notionBlocks.find(
     (block) =>
       block.type === "toggle" &&
@@ -138,5 +149,5 @@ export const extractSnapshotFromBlocks = (notionBlocks) => {
     ? parseSnapshotText(notionRichTextToPlain(codeBlock.code?.rich_text))
     : null;
   if (snapshot) return { snapshot, warnings: [] };
-  return parseLegacyNotionBlocks(notionBlocks);
+  return parseLegacyNotionBlocks(notionBlocks, format);
 };
