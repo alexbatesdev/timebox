@@ -32,6 +32,9 @@ export const useLooseEnds = () => {
   const [items, setItems] = useState(() => loadFromStorage());
   const [loading, setLoading] = useState(false);
   const { pinnedIds, togglePin } = usePinned("timebox-le-pinned");
+  const { pinnedIds: activeIds, togglePin: toggleActive } = usePinned(
+    "timebox-le-active",
+  );
 
   const persist = useCallback((next) => {
     setItems(next);
@@ -109,5 +112,5 @@ export const useLooseEnds = () => {
     return ap - bp;
   });
 
-  return { items: sortedItems, pinnedIds, togglePin, loading, addItem, completeItem, deleteItem, reload };
+  return { items: sortedItems, pinnedIds, togglePin, activeIds, toggleActive, loading, addItem, completeItem, deleteItem, reload };
 };

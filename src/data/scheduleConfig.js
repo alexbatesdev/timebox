@@ -7,6 +7,8 @@ import {
 
 const VALID_TYPES = new Set(["work", "flex-work", "break", "meeting", "wrapup"]);
 
+const DEFAULT_ACTIVE_COLOR = "#22d3ee";
+
 const DEFAULT_SCHEDULES = {
   standup: {
     label: "M-day",
@@ -44,6 +46,7 @@ const DEFAULT_SCHEDULES = {
 const SCHEDULE_CONFIG = {
   defaultType: "noStandup",
   timeFormat: DEFAULT_TIME_FORMAT,
+  activeColor: DEFAULT_ACTIVE_COLOR,
   days: {
     monday: "standup",
     tuesday: "noStandup",
@@ -98,6 +101,10 @@ export const loadScheduleConfig = async () => {
     return {
       defaultType: scheduleTypes.includes(data.defaultType) ? data.defaultType : scheduleTypes[0],
       timeFormat,
+      activeColor:
+        typeof data.activeColor === "string" && data.activeColor
+          ? data.activeColor
+          : DEFAULT_ACTIVE_COLOR,
       days: { ...SCHEDULE_CONFIG.days, ...(data.days || {}) },
       schedules,
     };

@@ -44,11 +44,21 @@ export default function FavoritesPanel({
   // teamwork
   favoriteTeamworkTasks,
   twPinnedIds,
+  twActiveIds,
   workflowData,
   onTogglePinTask,
+  onToggleActiveTask,
   onLoadSubtasksIfNeeded,
   onLoadWorkflowStages,
   onChangeStage,
+  // shared active color (across teamwork, loose ends, github)
+  activeColor,
+  // loose ends extras
+  looseActiveIds,
+  onToggleActiveLoose,
+  // github extras
+  ghActiveIds,
+  onToggleActiveGh,
   // github
   ghPinnedIds,
   favoriteGithubNotifs,
@@ -265,9 +275,12 @@ export default function FavoritesPanel({
                   key={item.id}
                   item={item}
                   pinnedIds={loosePinnedIds}
+                  activeIds={looseActiveIds}
+                  activeColor={activeColor}
                   onComplete={onCompleteLoose}
                   onDelete={onDeleteLoose}
                   onTogglePin={onTogglePinLoose}
+                  onToggleActive={onToggleActiveLoose}
                 />
               ))}
             </Section>
@@ -297,6 +310,9 @@ export default function FavoritesPanel({
                     onCloseMenu={() => setMenuTaskId(null)}
                     pinnedIds={twPinnedIds}
                     onTogglePin={onTogglePinTask}
+                    activeIds={twActiveIds}
+                    onToggleActive={onToggleActiveTask}
+                    activeColor={activeColor}
                     getNote={getTwNote}
                     setNote={setTwNote}
                   />
@@ -317,6 +333,9 @@ export default function FavoritesPanel({
                     n={n}
                     pinned={ghPinnedIds.has(String(n.id))}
                     onTogglePin={onTogglePinGh}
+                    active={ghActiveIds?.has(String(n.id)) ?? false}
+                    onToggleActive={onToggleActiveGh}
+                    activeColor={activeColor}
                     onMarkRead={onMarkRead}
                     confirmDeleteId={confirmDeleteId}
                     onConfirmDelete={handleConfirmDelete}
@@ -339,6 +358,9 @@ export default function FavoritesPanel({
                     pr={pr}
                     pinned={ghPinnedIds.has(String(pr.id))}
                     onTogglePin={onTogglePinGh}
+                    active={ghActiveIds?.has(String(pr.id)) ?? false}
+                    onToggleActive={onToggleActiveGh}
+                    activeColor={activeColor}
                     expanded={expandedPrId === pr.id}
                     onToggleExpand={togglePrExpand}
                     noteText={getGhNote(pr.id)}
@@ -362,6 +384,9 @@ export default function FavoritesPanel({
                     pr={pr}
                     pinned={ghPinnedIds.has(String(pr.id))}
                     onTogglePin={onTogglePinGh}
+                    active={ghActiveIds?.has(String(pr.id)) ?? false}
+                    onToggleActive={onToggleActiveGh}
+                    activeColor={activeColor}
                     expanded={expandedPrId === pr.id}
                     onToggleExpand={togglePrExpand}
                     noteText={getGhNote(pr.id)}

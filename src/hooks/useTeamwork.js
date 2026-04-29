@@ -28,6 +28,9 @@ export const useTeamwork = () => {
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [workflowData, setWorkflowData] = useState({});
   const { pinnedIds, togglePin } = usePinned("timebox-tw-pinned");
+  const { pinnedIds: activeIds, togglePin: toggleActive } = usePinned(
+    "timebox-tw-active",
+  );
   const pinnedIdsRef = useRef(pinnedIds);
   useEffect(() => {
     pinnedIdsRef.current = pinnedIds;
@@ -222,6 +225,8 @@ export const useTeamwork = () => {
     setProject,
     loadSubtasksIfNeeded,
     togglePin: handleTogglePin,
+    activeIds,
+    toggleActive,
     loadWorkflowStages,
     changeStage,
     reload,

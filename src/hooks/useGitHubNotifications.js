@@ -30,6 +30,9 @@ const saveDismissed = (set) => {
 export const useGitHubNotifications = () => {
   const configured = isGitHubConfigured();
   const { pinnedIds, togglePin } = usePinned("timebox-gh-pinned");
+  const { pinnedIds: activeIds, togglePin: toggleActive } = usePinned(
+    "timebox-gh-active",
+  );
   const [notifications, setNotifications] = useState([]);
   const [noiseNotifications, setNoiseNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -236,6 +239,8 @@ export const useGitHubNotifications = () => {
     deleteAll,
     pinnedIds,
     togglePin,
+    activeIds,
+    toggleActive,
     loadNoise,
     prs: sortedPrs,
     loadPRs,

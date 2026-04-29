@@ -2,9 +2,19 @@ import { useState } from "react";
 import { useNotes } from "../hooks/useNotes.js";
 import NotesSection from "./NotesSection.jsx";
 
-export function LooseEndItem({ item, pinnedIds, onComplete, onDelete, onTogglePin }) {
+export function LooseEndItem({
+  item,
+  pinnedIds,
+  activeIds,
+  activeColor,
+  onComplete,
+  onDelete,
+  onTogglePin,
+  onToggleActive,
+}) {
   const { getNote, setNote } = useNotes("timebox-le-notes");
   const pinned = pinnedIds?.has(item.id);
+  const active = activeIds?.has(item.id) ?? false;
   return (
     <div
       style={{
@@ -45,7 +55,8 @@ export function LooseEndItem({ item, pinnedIds, onComplete, onDelete, onTogglePi
           style={{
             flex: 1,
             fontSize: "13px",
-            color: pinned ? "#fde047" : "#d1d5db",
+            color: active ? activeColor : pinned ? "#fde047" : "#d1d5db",
+            fontWeight: active ? 700 : 400,
             whiteSpace: "pre-wrap",
             wordBreak: "break-word",
             textAlign: "left",
@@ -68,6 +79,22 @@ export function LooseEndItem({ item, pinnedIds, onComplete, onDelete, onTogglePi
           }}
         >
           {pinned ? "★" : "☆"}
+        </button>
+        <button
+          onClick={() => onToggleActive(item.id)}
+          title={active ? "Stop active" : "Mark active"}
+          style={{
+            background: "none",
+            border: "none",
+            color: active ? activeColor : "#4b5563",
+            cursor: "pointer",
+            fontSize: "13px",
+            padding: "0 2px",
+            flexShrink: 0,
+            marginTop: "1px",
+          }}
+        >
+          {active ? "●" : "○"}
         </button>
         <button
           onClick={() => onDelete(item.id)}
@@ -106,6 +133,9 @@ export default function LooseEndsPanel({
   onDelete,
   pinnedIds,
   onTogglePin,
+  activeIds,
+  onToggleActive,
+  activeColor,
   panelRight = 30,
 }) {
   const [input, setInput] = useState("");
@@ -272,9 +302,12 @@ export default function LooseEndsPanel({
               key={item.id}
               item={item}
               pinnedIds={pinnedIds}
+              activeIds={activeIds}
+              activeColor={activeColor}
               onComplete={onComplete}
               onDelete={onDelete}
               onTogglePin={onTogglePin}
+              onToggleActive={onToggleActive}
             />
           ))}
         </div>

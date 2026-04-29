@@ -66,6 +66,10 @@ Example:
 
 If `timeFormat` is omitted or unknown, it falls back to `lazyOpinionated`. The format applies to both reads (parsing config strings, parsing legacy Notion block titles) and writes (Notion block titles, markdown exports), so changing it requires either rewriting your config strings or letting the app re-emit them on the next Notion send.
 
+### "Active" highlight color
+
+`activeColor` (string, hex like `"#22d3ee"`) sets the highlight color used for items marked **active** across Teamwork tasks, Loose Ends, and GitHub items — a separate toggle from pinning, intended for the items you're working on right now. Defaults to `"#22d3ee"` (cyan). Active wins over pinned for both title-text color and (where applicable) disclosure-caret tint when both apply.
+
 ## Commands
 
 - `npm run dev`

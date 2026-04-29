@@ -208,8 +208,17 @@ function TaskRow({
   onSelectStage,
   onCloseMenu,
   pinned,
+  active,
+  activeColor,
 }) {
   const hasKids = task.hasSubtasks || task.subtasks?.length > 0;
+  const caretColor = active
+    ? activeColor
+    : pinned
+      ? "#fde047"
+      : hasKids
+        ? "#d1d5db"
+        : "#6b7280";
   return (
     <div
       style={{
@@ -225,7 +234,7 @@ function TaskRow({
         style={{
           background: "none",
           border: "none",
-          color: pinned ? "#fde047" : hasKids ? "#d1d5db" : "#6b7280",
+          color: caretColor,
           cursor: "pointer",
           fontSize: "10px",
           padding: "0 4px",
@@ -240,7 +249,8 @@ function TaskRow({
         style={{
           flex: 1,
           fontSize,
-          color: "#d1d5db",
+          color: active ? activeColor : "#d1d5db",
+          fontWeight: active ? 700 : 400,
           whiteSpace: "nowrap",
           overflow: "hidden",
           textOverflow: "ellipsis",
@@ -320,10 +330,14 @@ export function TaskNode({
   onCloseMenu,
   pinnedIds,
   onTogglePin,
+  activeIds,
+  onToggleActive,
+  activeColor,
   getNote,
   setNote,
 }) {
   const pinned = pinnedIds?.has(String(task.id));
+  const active = activeIds?.has(String(task.id)) ?? false;
   const instanceKey = [...path, String(task.id)].join("/");
   const expanded = expandedKeys.has(instanceKey);
   // Description defaults open for tasks without subtasks; the Set marks instances toggled away from the default.
@@ -343,6 +357,8 @@ export function TaskNode({
         onSelectStage={onSelectStage}
         onCloseMenu={onCloseMenu}
         pinned={pinned}
+        active={active}
+        activeColor={activeColor}
       />
       {expanded && (
         <div style={{ paddingLeft: 16 }}>
@@ -359,6 +375,21 @@ export function TaskNode({
             }}
           >
             {pinned ? "★ Unpin" : "☆ Pin"}
+          </button>
+          <button
+            onClick={() => onToggleActive(task.id)}
+            style={{
+              background: "none",
+              border: "none",
+              color: active ? activeColor : "#4b5563",
+              cursor: "pointer",
+              fontSize: "11px",
+              padding: "2px 0",
+              marginLeft: "10px",
+              fontFamily: "inherit",
+            }}
+          >
+            {active ? "● Stop active" : "○ Mark active"}
           </button>
           <NotesSection
             noteText={getNote(task.id)}
@@ -397,6 +428,9 @@ export function TaskNode({
               onCloseMenu={onCloseMenu}
               pinnedIds={pinnedIds}
               onTogglePin={onTogglePin}
+              activeIds={activeIds}
+              onToggleActive={onToggleActive}
+              activeColor={activeColor}
               getNote={getNote}
               setNote={setNote}
             />
@@ -421,6 +455,9 @@ export default function TeamworkPanel({
   onChangeStage,
   pinnedIds,
   onTogglePin,
+  activeIds,
+  onToggleActive,
+  activeColor,
   panelLeft = 30,
 }) {
   const { getNote, setNote } = useNotes("timebox-tw-notes");
@@ -620,6 +657,9 @@ export default function TeamworkPanel({
                 onCloseMenu={() => setMenuTaskId(null)}
                 pinnedIds={pinnedIds}
                 onTogglePin={onTogglePin}
+                activeIds={activeIds}
+                onToggleActive={onToggleActive}
+                activeColor={activeColor}
                 getNote={getNote}
                 setNote={setNote}
               />

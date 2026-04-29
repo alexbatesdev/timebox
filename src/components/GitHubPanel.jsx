@@ -25,7 +25,7 @@ const isLightColor = (hex) => {
   return (r * 299 + g * 587 + b * 114) / 1000 > 150;
 };
 
-export function NotificationItem({ n, onMarkRead, confirmDeleteId, onConfirmDelete, pinned, onTogglePin, expanded, onToggleExpand, noteText, onNoteChange }) {
+export function NotificationItem({ n, onMarkRead, confirmDeleteId, onConfirmDelete, pinned, onTogglePin, active, onToggleActive, activeColor, expanded, onToggleExpand, noteText, onNoteChange }) {
   const url = notificationUrl(n);
 
   return (
@@ -55,8 +55,14 @@ export function NotificationItem({ n, onMarkRead, confirmDeleteId, onConfirmDele
             flex: 1,
             minWidth: 0,
             fontSize: "12px",
-            color: pinned ? "#fde047" : n.unread ? "#d1d5db" : "#9ba0ab",
-            fontWeight: n.unread ? "600" : "400",
+            color: active
+              ? activeColor
+              : pinned
+                ? "#fde047"
+                : n.unread
+                  ? "#d1d5db"
+                  : "#9ba0ab",
+            fontWeight: active ? "700" : n.unread ? "600" : "400",
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -139,6 +145,22 @@ export function NotificationItem({ n, onMarkRead, confirmDeleteId, onConfirmDele
           >
             {pinned ? "★" : "☆"}
           </button>
+          <button
+            onClick={() => onToggleActive(n.id)}
+            title={active ? "Stop active" : "Mark active"}
+            style={{
+              background: "none",
+              border: "1px solid #333",
+              borderRadius: "4px",
+              color: active ? activeColor : "#4b5563",
+              cursor: "pointer",
+              fontSize: "10px",
+              padding: "2px 5px",
+              fontFamily: "inherit",
+            }}
+          >
+            {active ? "●" : "○"}
+          </button>
           {n.unread && (
             <button
               onClick={() => onMarkRead(n.id)}
@@ -199,6 +221,9 @@ function TierSection({
   onConfirmDelete,
   pinnedIds,
   onTogglePin,
+  activeIds,
+  onToggleActive,
+  activeColor,
   expandedId,
   onToggleExpand,
   getNote,
@@ -382,6 +407,9 @@ function TierSection({
               onConfirmDelete={onConfirmDelete}
               pinned={pinnedIds?.has(String(n.id))}
               onTogglePin={onTogglePin}
+              active={activeIds?.has(String(n.id)) ?? false}
+              onToggleActive={onToggleActive}
+              activeColor={activeColor}
               expanded={expandedId === n.id}
               onToggleExpand={onToggleExpand}
               noteText={getNote(n.id)}
@@ -403,7 +431,7 @@ const saveHiddenRepos = (set) => {
   localStorage.setItem(HIDDEN_REPOS_KEY, JSON.stringify([...set]));
 };
 
-export function PRItem({ pr, pinned, onTogglePin, expanded, onToggleExpand, noteText, onNoteChange, thresholds }) {
+export function PRItem({ pr, pinned, onTogglePin, active, onToggleActive, activeColor, expanded, onToggleExpand, noteText, onNoteChange, thresholds }) {
   const { timeColor, titleColor } = getAgeColors(pr.updatedAt, thresholds);
   return (
     <div style={{ borderBottom: "1px solid #1a1a1a", padding: "6px 0" }}>
@@ -431,8 +459,8 @@ export function PRItem({ pr, pinned, onTogglePin, expanded, onToggleExpand, note
             flex: 1,
             minWidth: 0,
             fontSize: "12px",
-            color: pinned ? "#fde047" : titleColor || "#d1d5db",
-            fontWeight: "600",
+            color: active ? activeColor : pinned ? "#fde047" : titleColor || "#d1d5db",
+            fontWeight: active ? "700" : "600",
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -495,6 +523,22 @@ export function PRItem({ pr, pinned, onTogglePin, expanded, onToggleExpand, note
         >
           {pinned ? "★" : "☆"}
         </button>
+        <button
+          onClick={() => onToggleActive(pr.id)}
+          title={active ? "Stop active" : "Mark active"}
+          style={{
+            background: "none",
+            border: "1px solid #333",
+            borderRadius: "4px",
+            color: active ? activeColor : "#4b5563",
+            cursor: "pointer",
+            fontSize: "10px",
+            padding: "2px 5px",
+            fontFamily: "inherit",
+          }}
+        >
+          {active ? "●" : "○"}
+        </button>
       </div>
       {expanded && (
         <div style={{ paddingLeft: "20px", marginTop: "4px" }}>
@@ -505,7 +549,7 @@ export function PRItem({ pr, pinned, onTogglePin, expanded, onToggleExpand, note
   );
 }
 
-function RepoGroup({ repo, prs, onHide, pinnedIds, onTogglePin, expandedId, onToggleExpand, getNote, setNote, thresholds }) {
+function RepoGroup({ repo, prs, onHide, pinnedIds, onTogglePin, activeIds, onToggleActive, activeColor, expandedId, onToggleExpand, getNote, setNote, thresholds }) {
   const [collapsed, setCollapsed] = useState(false);
   return (
     <div>
@@ -559,6 +603,9 @@ function RepoGroup({ repo, prs, onHide, pinnedIds, onTogglePin, expandedId, onTo
           pr={pr}
           pinned={pinnedIds?.has(String(pr.id))}
           onTogglePin={onTogglePin}
+          active={activeIds?.has(String(pr.id)) ?? false}
+          onToggleActive={onToggleActive}
+          activeColor={activeColor}
           expanded={expandedId === pr.id}
           onToggleExpand={onToggleExpand}
           noteText={getNote(pr.id)}
@@ -577,6 +624,9 @@ function PRSection({
   onToggleRepo,
   pinnedIds,
   onTogglePin,
+  activeIds,
+  onToggleActive,
+  activeColor,
   expandedId,
   onToggleExpand,
   getNote,
@@ -651,6 +701,9 @@ function PRSection({
               onHide={() => onToggleRepo(repo)}
               pinnedIds={pinnedIds}
               onTogglePin={onTogglePin}
+              activeIds={activeIds}
+              onToggleActive={onToggleActive}
+              activeColor={activeColor}
               expandedId={expandedId}
               onToggleExpand={onToggleExpand}
               getNote={getNote}
@@ -714,6 +767,9 @@ export default function GitHubPanel({
   onDeleteAll,
   pinnedIds,
   onTogglePin,
+  activeIds,
+  onToggleActive,
+  activeColor,
   onLoadNoise,
   prs,
   onLoadPRs,
@@ -925,6 +981,9 @@ export default function GitHubPanel({
                 onConfirmDelete={handleConfirmDelete}
                 pinnedIds={pinnedIds}
                 onTogglePin={onTogglePin}
+                activeIds={activeIds}
+                onToggleActive={onToggleActive}
+                activeColor={activeColor}
                 expandedId={expandedId}
                 onToggleExpand={handleToggleExpand}
                 getNote={getNote}
@@ -950,6 +1009,9 @@ export default function GitHubPanel({
               onToggleRepo={toggleHiddenRepo}
               pinnedIds={pinnedIds}
               onTogglePin={onTogglePin}
+              activeIds={activeIds}
+              onToggleActive={onToggleActive}
+              activeColor={activeColor}
               expandedId={expandedId}
               onToggleExpand={handleToggleExpand}
               getNote={getNote}
@@ -964,6 +1026,9 @@ export default function GitHubPanel({
               onToggleRepo={toggleHiddenRepo}
               pinnedIds={pinnedIds}
               onTogglePin={onTogglePin}
+              activeIds={activeIds}
+              onToggleActive={onToggleActive}
+              activeColor={activeColor}
               expandedId={expandedId}
               onToggleExpand={handleToggleExpand}
               getNote={getNote}

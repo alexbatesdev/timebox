@@ -727,6 +727,9 @@ export default function App() {
               onChangeStage={teamwork.changeStage}
               pinnedIds={teamwork.pinnedIds}
               onTogglePin={teamwork.togglePin}
+              activeIds={teamwork.activeIds}
+              onToggleActive={teamwork.toggleActive}
+              activeColor={config?.activeColor}
               panelLeft={githubOpen ? 480 : 30}
             />
           )}
@@ -743,6 +746,9 @@ export default function App() {
               onDeleteAll={github.deleteAll}
               pinnedIds={github.pinnedIds}
               onTogglePin={github.togglePin}
+              activeIds={github.activeIds}
+              onToggleActive={github.toggleActive}
+              activeColor={config?.activeColor}
               onLoadNoise={github.loadNoise}
               prs={github.prs}
               onLoadPRs={github.loadPRs}
@@ -880,6 +886,9 @@ export default function App() {
           onDelete={looseEnds.deleteItem}
           pinnedIds={looseEnds.pinnedIds}
           onTogglePin={looseEnds.togglePin}
+          activeIds={looseEnds.activeIds}
+          onToggleActive={looseEnds.toggleActive}
+          activeColor={config?.activeColor}
           panelRight={favoritesOpen ? 480 : 30}
         />
         <FavoritesPanel
@@ -888,17 +897,24 @@ export default function App() {
           totalCount={favoriteCount}
           favoriteLooseEnds={favoriteLooseEnds}
           loosePinnedIds={looseEnds.pinnedIds}
+          looseActiveIds={looseEnds.activeIds}
           onCompleteLoose={looseEnds.completeItem}
           onDeleteLoose={looseEnds.deleteItem}
           onTogglePinLoose={looseEnds.togglePin}
+          onToggleActiveLoose={looseEnds.toggleActive}
           favoriteTeamworkTasks={favoriteTeamworkTasks}
           twPinnedIds={teamwork.pinnedIds}
+          twActiveIds={teamwork.activeIds}
+          activeColor={config?.activeColor}
           workflowData={teamwork.workflowData}
           onTogglePinTask={teamwork.togglePin}
+          onToggleActiveTask={teamwork.toggleActive}
           onLoadSubtasksIfNeeded={teamwork.loadSubtasksIfNeeded}
           onLoadWorkflowStages={teamwork.loadWorkflowStages}
           onChangeStage={teamwork.changeStage}
           ghPinnedIds={github.pinnedIds}
+          ghActiveIds={github.activeIds}
+          onToggleActiveGh={github.toggleActive}
           favoriteGithubNotifs={favoriteGithubNotifs}
           favoriteMyPRs={favoriteMyPRs}
           favoriteReviewRequestPRs={favoriteReviewRequestPRs}
