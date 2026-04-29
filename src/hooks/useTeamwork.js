@@ -89,11 +89,11 @@ export const useTeamwork = () => {
     setTasks((prev) => walk(prev));
   }, []);
 
-  const toggleExpanded = useCallback(
+  const loadSubtasksIfNeeded = useCallback(
     (taskId) => {
       setTasks((prev) => {
         const task = findInTree(prev, taskId);
-        if (task && task.subtasks === null && !task.expanded) {
+        if (task && task.subtasks === null) {
           fetchTaskSubtasks(taskId).then((subs) => {
             updateInTree(taskId, (t) => ({
               ...t,
@@ -105,23 +105,9 @@ export const useTeamwork = () => {
             }));
           });
         }
-
-        const walk = (list) =>
-          list.map((t) => {
-            if (String(t.id) === String(taskId))
-              return { ...t, expanded: !t.expanded };
-            if (t.subtasks?.length) return { ...t, subtasks: walk(t.subtasks) };
-            return t;
-          });
-        return walk(prev);
+        return prev;
       });
     },
-    [updateInTree],
-  );
-
-  const toggleDescExpanded = useCallback(
-    (taskId) =>
-      updateInTree(taskId, (t) => ({ ...t, descExpanded: !t.descExpanded })),
     [updateInTree],
   );
 
@@ -234,8 +220,7 @@ export const useTeamwork = () => {
     selectedProjectId,
     workflowData,
     setProject,
-    toggleExpanded,
-    toggleDescExpanded,
+    loadSubtasksIfNeeded,
     togglePin: handleTogglePin,
     loadWorkflowStages,
     changeStage,

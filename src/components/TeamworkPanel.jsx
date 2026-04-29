@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { taskUrl } from "../teamwork/api.js";
 import { useNotes } from "../hooks/useNotes.js";
+import { useTeamworkExpand } from "../hooks/useTeamworkExpand.js";
 import NotesSection from "./NotesSection.jsx";
 
 const renderDescription = (text) => {
@@ -56,12 +57,12 @@ const renderDescription = (text) => {
   });
 };
 
-function DescriptionCard({ task, onToggle }) {
+function DescriptionCard({ task, expanded, onToggle }) {
   if (!task.description) return null;
   return (
     <div style={{ marginBottom: "6px" }}>
       <button
-        onClick={() => onToggle(task.id)}
+        onClick={onToggle}
         style={{
           background: "none",
           border: "none",
@@ -74,10 +75,10 @@ function DescriptionCard({ task, onToggle }) {
           gap: "4px",
         }}
       >
-        <span style={{ fontSize: "9px" }}>{task.descExpanded ? "▼" : "▶"}</span>
+        <span style={{ fontSize: "9px" }}>{expanded ? "▼" : "▶"}</span>
         Description
       </button>
-      {task.descExpanded && (
+      {expanded && (
         <div
           style={{
             marginTop: "4px",
@@ -198,6 +199,7 @@ function StageMenu({ task, stages, onSelect, onClose }) {
 
 function TaskRow({
   task,
+  expanded,
   onToggle,
   fontSize = "12px",
   menuTaskId,
@@ -232,7 +234,7 @@ function TaskRow({
           textAlign: "center",
         }}
       >
-        {task.expanded ? "▼" : "▶"}
+        {expanded ? "▼" : "▶"}
       </button>
       <span
         style={{
@@ -306,6 +308,9 @@ function TaskRow({
 
 export function TaskNode({
   task,
+  path = [],
+  expandedKeys,
+  descExpandedKeys,
   onToggleExpanded,
   onToggleDescExpanded,
   menuTaskId,
@@ -319,11 +324,16 @@ export function TaskNode({
   setNote,
 }) {
   const pinned = pinnedIds?.has(String(task.id));
+  const instanceKey = [...path, String(task.id)].join("/");
+  const expanded = expandedKeys.has(instanceKey);
+  const descExpanded = descExpandedKeys.has(instanceKey);
+  const childPath = [...path, String(task.id)];
   return (
     <div>
       <TaskRow
         task={task}
-        onToggle={() => onToggleExpanded(task.id)}
+        expanded={expanded}
+        onToggle={() => onToggleExpanded(instanceKey, task.id)}
         menuTaskId={menuTaskId}
         onBadgeClick={onBadgeClick}
         stages={stages}
@@ -331,7 +341,7 @@ export function TaskNode({
         onCloseMenu={onCloseMenu}
         pinned={pinned}
       />
-      {task.expanded && (
+      {expanded && (
         <div style={{ paddingLeft: 16 }}>
           <button
             onClick={() => onTogglePin(task.id)}
@@ -351,7 +361,11 @@ export function TaskNode({
             noteText={getNote(task.id)}
             onNoteChange={(text) => setNote(task.id, text)}
           />
-          <DescriptionCard task={task} onToggle={onToggleDescExpanded} />
+          <DescriptionCard
+            task={task}
+            expanded={descExpanded}
+            onToggle={() => onToggleDescExpanded(instanceKey)}
+          />
           {task.hasSubtasks && !task.subtasks && (
             <div
               style={{
@@ -368,6 +382,9 @@ export function TaskNode({
             <TaskNode
               key={sub.id}
               task={sub}
+              path={childPath}
+              expandedKeys={expandedKeys}
+              descExpandedKeys={descExpandedKeys}
               onToggleExpanded={onToggleExpanded}
               onToggleDescExpanded={onToggleDescExpanded}
               menuTaskId={menuTaskId}
@@ -396,8 +413,7 @@ export default function TeamworkPanel({
   selectedProjectId,
   workflowData,
   onProjectChange,
-  onToggleExpanded,
-  onToggleDescExpanded,
+  onLoadSubtasksIfNeeded,
   onLoadWorkflowStages,
   onChangeStage,
   pinnedIds,
@@ -406,6 +422,12 @@ export default function TeamworkPanel({
 }) {
   const { getNote, setNote } = useNotes("timebox-tw-notes");
   const [menuTaskId, setMenuTaskId] = useState(null);
+  const {
+    expandedKeys,
+    descExpandedKeys,
+    toggleExpanded,
+    toggleDescExpanded,
+  } = useTeamworkExpand(onLoadSubtasksIfNeeded);
   const findTask = (list) => {
     for (const t of list) {
       if (t.id === menuTaskId) return t;
@@ -583,8 +605,11 @@ export default function TeamworkPanel({
             <div key={task.id} style={{ padding: "0 16px" }}>
               <TaskNode
                 task={task}
-                onToggleExpanded={onToggleExpanded}
-                onToggleDescExpanded={onToggleDescExpanded}
+                path={[]}
+                expandedKeys={expandedKeys}
+                descExpandedKeys={descExpandedKeys}
+                onToggleExpanded={toggleExpanded}
+                onToggleDescExpanded={toggleDescExpanded}
                 menuTaskId={menuTaskId}
                 onBadgeClick={handleBadgeClick}
                 stages={stages}

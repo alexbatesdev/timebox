@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNotes } from "../hooks/useNotes.js";
+import { useTeamworkExpand } from "../hooks/useTeamworkExpand.js";
 import { LooseEndItem } from "./LooseEndsPanel.jsx";
 import { TaskNode } from "./TeamworkPanel.jsx";
 import { NotificationItem, PRItem } from "./GitHubPanel.jsx";
@@ -45,8 +46,7 @@ export default function FavoritesPanel({
   twPinnedIds,
   workflowData,
   onTogglePinTask,
-  onToggleExpanded,
-  onToggleDescExpanded,
+  onLoadSubtasksIfNeeded,
   onLoadWorkflowStages,
   onChangeStage,
   // github
@@ -68,6 +68,12 @@ export default function FavoritesPanel({
     useNotes("timebox-gh-notes");
   const { getNote: getTwNote, setNote: setTwNote } =
     useNotes("timebox-tw-notes");
+  const {
+    expandedKeys: twExpandedKeys,
+    descExpandedKeys: twDescExpandedKeys,
+    toggleExpanded: toggleTwExpanded,
+    toggleDescExpanded: toggleTwDescExpanded,
+  } = useTeamworkExpand(onLoadSubtasksIfNeeded);
   const confirmTimeoutRef = useRef(null);
 
   useEffect(() => {
@@ -279,8 +285,11 @@ export default function FavoritesPanel({
                 <div key={task.id} style={{ padding: "0 16px" }}>
                   <TaskNode
                     task={task}
-                    onToggleExpanded={onToggleExpanded}
-                    onToggleDescExpanded={onToggleDescExpanded}
+                    path={[]}
+                    expandedKeys={twExpandedKeys}
+                    descExpandedKeys={twDescExpandedKeys}
+                    onToggleExpanded={toggleTwExpanded}
+                    onToggleDescExpanded={toggleTwDescExpanded}
                     menuTaskId={menuTaskId}
                     onBadgeClick={handleBadgeClick}
                     stages={twStages}

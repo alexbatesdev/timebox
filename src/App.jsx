@@ -722,8 +722,7 @@ export default function App() {
               selectedProjectId={teamwork.selectedProjectId}
               workflowData={teamwork.workflowData}
               onProjectChange={teamwork.setProject}
-              onToggleExpanded={teamwork.toggleExpanded}
-              onToggleDescExpanded={teamwork.toggleDescExpanded}
+              onLoadSubtasksIfNeeded={teamwork.loadSubtasksIfNeeded}
               onLoadWorkflowStages={teamwork.loadWorkflowStages}
               onChangeStage={teamwork.changeStage}
               pinnedIds={teamwork.pinnedIds}
@@ -896,8 +895,7 @@ export default function App() {
           twPinnedIds={teamwork.pinnedIds}
           workflowData={teamwork.workflowData}
           onTogglePinTask={teamwork.togglePin}
-          onToggleExpanded={teamwork.toggleExpanded}
-          onToggleDescExpanded={teamwork.toggleDescExpanded}
+          onLoadSubtasksIfNeeded={teamwork.loadSubtasksIfNeeded}
           onLoadWorkflowStages={teamwork.loadWorkflowStages}
           onChangeStage={teamwork.changeStage}
           ghPinnedIds={github.pinnedIds}
