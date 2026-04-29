@@ -480,12 +480,14 @@ export default function TeamworkPanel({
       >
         {/* Header */}
         <div
+          onClick={() => onToggle(false)}
           style={{
             padding: "14px 16px",
             borderBottom: "1px solid #252525",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
+            cursor: "pointer",
           }}
         >
           <div
