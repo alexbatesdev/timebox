@@ -326,7 +326,10 @@ export function TaskNode({
   const pinned = pinnedIds?.has(String(task.id));
   const instanceKey = [...path, String(task.id)].join("/");
   const expanded = expandedKeys.has(instanceKey);
-  const descExpanded = descExpandedKeys.has(instanceKey);
+  // Description defaults open for tasks without subtasks; the Set marks instances toggled away from the default.
+  const descDefaultOpen = !task.hasSubtasks;
+  const descToggled = descExpandedKeys.has(instanceKey);
+  const descExpanded = descToggled ? !descDefaultOpen : descDefaultOpen;
   const childPath = [...path, String(task.id)];
   return (
     <div>
