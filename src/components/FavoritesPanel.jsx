@@ -62,8 +62,7 @@ export default function FavoritesPanel({
   // github
   ghPinnedIds,
   favoriteGithubNotifs,
-  favoriteMyPRs,
-  favoriteReviewRequestPRs,
+  favoritePRs,
   onMarkRead,
   onMarkDone,
   onTogglePinGh,
@@ -138,10 +137,8 @@ export default function FavoritesPanel({
   const hasLoose = favoriteLooseEnds.length > 0;
   const hasTeamwork = favoriteTeamworkTasks.length > 0;
   const hasNotifs = favoriteGithubNotifs.length > 0;
-  const hasMyPRs = favoriteMyPRs.length > 0;
-  const hasReviewPRs = favoriteReviewRequestPRs.length > 0;
-  const isEmpty =
-    !hasLoose && !hasTeamwork && !hasNotifs && !hasMyPRs && !hasReviewPRs;
+  const hasPRs = (favoritePRs?.length ?? 0) > 0;
+  const isEmpty = !hasLoose && !hasTeamwork && !hasNotifs && !hasPRs;
 
   return (
     <>
@@ -349,10 +346,10 @@ export default function FavoritesPanel({
             </Section>
           )}
 
-          {hasMyPRs && (
-            <Section title="🔀 My GitHub PRs" count={favoriteMyPRs.length}>
+          {hasPRs && (
+            <Section title="🔀 GitHub PRs" count={favoritePRs.length}>
               <div style={{ padding: "0 16px" }}>
-                {favoriteMyPRs.map((pr) => (
+                {favoritePRs.map((pr) => (
                   <PRItem
                     key={pr.id}
                     pr={pr}
@@ -366,32 +363,6 @@ export default function FavoritesPanel({
                     noteText={getGhNote(pr.id)}
                     onNoteChange={(text) => setGhNote(pr.id, text)}
                     thresholds={DEFAULT_AGE_THRESHOLDS.mine}
-                  />
-                ))}
-              </div>
-            </Section>
-          )}
-
-          {hasReviewPRs && (
-            <Section
-              title="👀 Review Requests"
-              count={favoriteReviewRequestPRs.length}
-            >
-              <div style={{ padding: "0 16px" }}>
-                {favoriteReviewRequestPRs.map((pr) => (
-                  <PRItem
-                    key={pr.id}
-                    pr={pr}
-                    pinned={ghPinnedIds.has(String(pr.id))}
-                    onTogglePin={onTogglePinGh}
-                    active={ghActiveIds?.has(String(pr.id)) ?? false}
-                    onToggleActive={onToggleActiveGh}
-                    activeColor={activeColor}
-                    expanded={expandedPrId === pr.id}
-                    onToggleExpand={togglePrExpand}
-                    noteText={getGhNote(pr.id)}
-                    onNoteChange={(text) => setGhNote(pr.id, text)}
-                    thresholds={DEFAULT_AGE_THRESHOLDS.reviewRequests}
                   />
                 ))}
               </div>

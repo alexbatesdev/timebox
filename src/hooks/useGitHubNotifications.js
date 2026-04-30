@@ -3,8 +3,7 @@ import {
   isGitHubConfigured,
   fetchNotifications,
   fetchNoiseNotifications,
-  fetchMyPRs,
-  fetchReviewRequests,
+  fetchPRsByQuery,
   markThreadRead,
   markThreadDone,
 } from "../github/api.js";
@@ -13,6 +12,10 @@ import {
   loadNotificationRules,
   DEFAULT_NOTIFICATION_RULES,
 } from "../github/rules.js";
+import {
+  loadPRSections,
+  DEFAULT_PR_SECTIONS,
+} from "../github/prSections.js";
 import { usePinned } from "./usePinned.js";
 
 const POLL_INTERVAL = 60_000;
@@ -37,6 +40,7 @@ export const useGitHubNotifications = () => {
   const [noiseNotifications, setNoiseNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [rules, setRules] = useState(DEFAULT_NOTIFICATION_RULES);
+  const [prSections, setPrSections] = useState(DEFAULT_PR_SECTIONS);
   const pollTimeoutRef = useRef(null);
   const dismissedRef = useRef(loadDismissed());
 
@@ -44,6 +48,9 @@ export const useGitHubNotifications = () => {
     let cancelled = false;
     loadNotificationRules().then((loaded) => {
       if (!cancelled) setRules(loaded);
+    });
+    loadPRSections().then((loaded) => {
+      if (!cancelled) setPrSections(loaded);
     });
     return () => {
       cancelled = true;
@@ -146,20 +153,30 @@ export const useGitHubNotifications = () => {
     [reload],
   );
 
-  const [prs, setPrs] = useState({ mine: [], reviewRequests: [] });
+  const [prs, setPrs] = useState({});
 
   const loadPRs = useCallback(async () => {
     if (!configured) return;
     try {
-      const [mine, reviewRequests] = await Promise.all([
-        fetchMyPRs(),
-        fetchReviewRequests(),
-      ]);
-      setPrs({ mine, reviewRequests });
+      const results = await Promise.all(
+        prSections.map(async (section) => {
+          try {
+            const items = await fetchPRsByQuery(section.query);
+            return [section.id, items];
+          } catch (err) {
+            console.error(
+              `GitHub PR fetch failed for section "${section.id}":`,
+              err,
+            );
+            return [section.id, []];
+          }
+        }),
+      );
+      setPrs(Object.fromEntries(results));
     } catch (err) {
       console.error("GitHub PR fetch error:", err);
     }
-  }, [configured]);
+  }, [configured, prSections]);
 
   const loadNoise = useCallback(async () => {
     if (!configured) return;
@@ -215,10 +232,11 @@ export const useGitHubNotifications = () => {
       const bp = pinnedIds.has(String(b.id)) ? 0 : 1;
       return ap - bp;
     };
-    return {
-      mine: [...prs.mine].sort(byPinned),
-      reviewRequests: [...prs.reviewRequests].sort(byPinned),
-    };
+    const out = {};
+    for (const [id, items] of Object.entries(prs)) {
+      out[id] = [...items].sort(byPinned);
+    }
+    return out;
   }, [prs, pinnedIds]);
 
   const unreadCount = useMemo(
@@ -243,6 +261,7 @@ export const useGitHubNotifications = () => {
     toggleActive,
     loadNoise,
     prs: sortedPrs,
+    prSections,
     loadPRs,
   };
 };

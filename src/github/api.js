@@ -72,12 +72,8 @@ const mapPR = (item) => ({
   draft: item.draft,
 });
 
-export const fetchMyPRs = async () => {
-  const data = await ghFetch("/search/issues?q=is:pr+is:open+author:@me&sort=updated&per_page=50");
-  return (data.items || []).map(mapPR);
-};
-
-export const fetchReviewRequests = async () => {
-  const data = await ghFetch("/search/issues?q=is:pr+is:open+draft:false+user-review-requested:@me&sort=updated&per_page=50");
+export const fetchPRsByQuery = async (query) => {
+  const q = encodeURIComponent(query);
+  const data = await ghFetch(`/search/issues?q=${q}&per_page=50`);
   return (data.items || []).map(mapPR);
 };

@@ -663,18 +663,14 @@ export default function App() {
   const favoriteGithubNotifs = allGhNotifs.filter((n) =>
     github.pinnedIds.has(String(n.id)),
   );
-  const favoriteMyPRs = (github.prs?.mine || []).filter((pr) =>
-    github.pinnedIds.has(String(pr.id)),
-  );
-  const favoriteReviewRequestPRs = (github.prs?.reviewRequests || []).filter(
-    (pr) => github.pinnedIds.has(String(pr.id)),
-  );
+  const favoritePRs = Object.values(github.prs || {})
+    .flat()
+    .filter((pr) => github.pinnedIds.has(String(pr.id)));
   const favoriteCount =
     favoriteLooseEnds.length +
     favoriteTeamworkTasks.length +
     favoriteGithubNotifs.length +
-    favoriteMyPRs.length +
-    favoriteReviewRequestPRs.length;
+    favoritePRs.length;
 
   return (
     <div
@@ -751,6 +747,7 @@ export default function App() {
               activeColor={config?.activeColor}
               onLoadNoise={github.loadNoise}
               prs={github.prs}
+              prSections={github.prSections}
               onLoadPRs={github.loadPRs}
             />
           )}
@@ -916,8 +913,7 @@ export default function App() {
           ghActiveIds={github.activeIds}
           onToggleActiveGh={github.toggleActive}
           favoriteGithubNotifs={favoriteGithubNotifs}
-          favoriteMyPRs={favoriteMyPRs}
-          favoriteReviewRequestPRs={favoriteReviewRequestPRs}
+          favoritePRs={favoritePRs}
           onMarkRead={github.markRead}
           onMarkDone={github.markDone}
           onTogglePinGh={github.togglePin}

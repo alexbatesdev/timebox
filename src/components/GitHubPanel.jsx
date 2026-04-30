@@ -5,7 +5,6 @@ import {
   reasonLabel,
   reasonColor,
   getAgeColors,
-  DEFAULT_AGE_THRESHOLDS,
 } from "../github/format.js";
 import { useNotes } from "../hooks/useNotes.js";
 import NotesSection from "./NotesSection.jsx";
@@ -772,6 +771,7 @@ export default function GitHubPanel({
   activeColor,
   onLoadNoise,
   prs,
+  prSections,
   onLoadPRs,
 }) {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -779,20 +779,6 @@ export default function GitHubPanel({
   const [expandedId, setExpandedId] = useState(null);
   const { getNote, setNote } = useNotes("timebox-gh-notes");
   const confirmTimeoutRef = useRef(null);
-  const [ageThresholds, setAgeThresholds] = useState(DEFAULT_AGE_THRESHOLDS);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/pr-age-thresholds.json", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((data) => {
-        if (!cancelled && data.reviewRequests && data.mine) {
-          setAgeThresholds(data);
-        }
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
 
   const handleToggleExpand = (id) => {
     setExpandedId((prev) => (prev === id ? null : id));
@@ -957,6 +943,56 @@ export default function GitHubPanel({
             </div>
           )}
           <CollapsibleSection
+            title="Pull Requests"
+            detail={(() => {
+              const visible = (prSections || []).reduce((sum, section) => {
+                const items = prs[section.id] || [];
+                return sum + items.filter((pr) => !hiddenRepos.has(pr.repo)).length;
+              }, 0);
+              return visible > 0 ? `${visible} visible` : null;
+            })()}
+          >
+            {(prSections || []).map((section) => (
+              <PRSection
+                key={section.id}
+                title={section.title}
+                items={prs[section.id] || []}
+                hiddenRepos={hiddenRepos}
+                onToggleRepo={toggleHiddenRepo}
+                pinnedIds={pinnedIds}
+                onTogglePin={onTogglePin}
+                activeIds={activeIds}
+                onToggleActive={onToggleActive}
+                activeColor={activeColor}
+                expandedId={expandedId}
+                onToggleExpand={handleToggleExpand}
+                getNote={getNote}
+                setNote={setNote}
+                accentColor={section.accentColor}
+                defaultExpanded={section.defaultExpanded}
+                thresholds={section.ageThresholds}
+              />
+            ))}
+            {hiddenRepos.size > 0 && (
+              <button
+                onClick={unhideAllRepos}
+                style={{
+                  display: "block",
+                  margin: "4px 16px 8px",
+                  background: "none",
+                  border: "none",
+                  color: "#4b5563",
+                  cursor: "pointer",
+                  fontSize: "10px",
+                  fontFamily: "inherit",
+                }}
+              >
+                Show {hiddenRepos.size} hidden repo
+                {hiddenRepos.size > 1 ? "s" : ""}
+              </button>
+            )}
+          </CollapsibleSection>
+          <CollapsibleSection
             title="Notifications"
             detail={(() => {
               const all = grouped.flatMap((g) => g.items);
@@ -990,70 +1026,6 @@ export default function GitHubPanel({
                 setNote={setNote}
               />
             ))}
-          </CollapsibleSection>
-          <CollapsibleSection
-            title="Pull Requests"
-            detail={(() => {
-              const review = prs.reviewRequests.filter((pr) => !hiddenRepos.has(pr.repo)).length;
-              const mine = prs.mine.filter((pr) => !hiddenRepos.has(pr.repo)).length;
-              const parts = [];
-              if (review > 0) parts.push(`${review} awaiting review`);
-              if (mine > 0) parts.push(`${mine} open`);
-              return parts.join(", ") || null;
-            })()}
-          >
-            <PRSection
-              title="Awaiting My Review"
-              items={prs.reviewRequests}
-              hiddenRepos={hiddenRepos}
-              onToggleRepo={toggleHiddenRepo}
-              pinnedIds={pinnedIds}
-              onTogglePin={onTogglePin}
-              activeIds={activeIds}
-              onToggleActive={onToggleActive}
-              activeColor={activeColor}
-              expandedId={expandedId}
-              onToggleExpand={handleToggleExpand}
-              getNote={getNote}
-              setNote={setNote}
-              accentColor="#3b82f6"
-              thresholds={ageThresholds.reviewRequests}
-            />
-            <PRSection
-              title="My Open PRs"
-              items={prs.mine}
-              hiddenRepos={hiddenRepos}
-              onToggleRepo={toggleHiddenRepo}
-              pinnedIds={pinnedIds}
-              onTogglePin={onTogglePin}
-              activeIds={activeIds}
-              onToggleActive={onToggleActive}
-              activeColor={activeColor}
-              expandedId={expandedId}
-              onToggleExpand={handleToggleExpand}
-              getNote={getNote}
-              setNote={setNote}
-              accentColor="#22c55e"
-              thresholds={ageThresholds.mine}
-            />
-            {hiddenRepos.size > 0 && (
-              <button
-                onClick={unhideAllRepos}
-                style={{
-                  display: "block",
-                  margin: "4px 16px 8px",
-                  background: "none",
-                  border: "none",
-                  color: "#4b5563",
-                  cursor: "pointer",
-                  fontSize: "10px",
-                  fontFamily: "inherit",
-                }}
-              >
-                Show {hiddenRepos.size} hidden repo
-                {hiddenRepos.size > 1 ? "s" : ""}
-              </button>
-            )}
           </CollapsibleSection>
         </div>
       </div>

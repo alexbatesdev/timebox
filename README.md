@@ -66,6 +66,42 @@ Example:
 
 If `timeFormat` is omitted or unknown, it falls back to `lazyOpinionated`. The format applies to both reads (parsing config strings, parsing legacy Notion block titles) and writes (Notion block titles, markdown exports), so changing it requires either rewriting your config strings or letting the app re-emit them on the next Notion send.
 
+### GitHub PR sections
+
+The Pull Requests section of the GitHub panel is fully configurable via [`public/github-pr-sections.json`](/Users/alex.bates/Code/timebox/public/github-pr-sections.json). Each entry defines one panel section, driven by a GitHub Search query (the same syntax you'd type in github.com).
+
+Schema:
+
+```json
+{
+  "sections": [
+    {
+      "id": "review-requests",
+      "title": "Awaiting My Review",
+      "query": "is:pr is:open draft:false user-review-requested:@me sort:updated-desc",
+      "accentColor": "#3b82f6",
+      "defaultExpanded": true,
+      "ageThresholds": [
+        { "minHours": 0, "color": "#6b7280" },
+        { "minHours": 16, "color": "#f59e0b" },
+        { "minHours": 72, "color": "#dc2626", "titleColor": "#dc2626" }
+      ]
+    }
+  ]
+}
+```
+
+- `id` — unique per section. Used as the React key and the bucket key for fetched results.
+- `title` — section header text.
+- `query` — any valid GitHub Search query for issues/PRs (e.g. `is:pr is:closed author:@me sort:created-desc`, `is:pr is:open draft:false user-review-requested:@me`). Each section is fetched independently via the GitHub Search API.
+- `accentColor` (optional) — left-border accent color for the section.
+- `defaultExpanded` (optional, default `true`) — whether the section starts expanded.
+- `ageThresholds` (optional) — array of `{ minHours, color, titleColor? }`. The color of the relative-time text (and optionally the PR title) escalates as a PR ages past each threshold.
+
+**Order in the array = render order.** The first section is rendered at the top.
+
+If the file is missing or invalid, the app falls back to two built-in defaults: "Awaiting My Review" and "My Open PRs".
+
 ### "Active" highlight color
 
 `activeColor` (string, hex like `"#22d3ee"`) sets the highlight color used for items marked **active** across Teamwork tasks, Loose Ends, and GitHub items — a separate toggle from pinning, intended for the items you're working on right now. Defaults to `"#22d3ee"` (cyan). Active wins over pinned for both title-text color and (where applicable) disclosure-caret tint when both apply.
