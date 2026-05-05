@@ -1,6 +1,5 @@
 {
   "sections": [
-    { "type": "notifications" },
     {
       "type": "group",
       "id": "prs",
@@ -36,6 +35,40 @@
           ]
         }
       ]
+    },
+    {
+      "type": "notifications",
+      "settings": {
+        "categories": [
+          {
+            "id": "primary",
+            "label": "Primary",
+            "reasons": [
+              "mention",
+              "team_mention",
+              "comment",
+              "author",
+              "state_change",
+              "assign",
+              "ci_activity"
+            ],
+            "defaultExpanded": true
+          },
+          {
+            "id": "review",
+            "label": "Review Requested",
+            "reasons": ["review_requested"],
+            "defaultExpanded": true
+          },
+          {
+            "id": "noise",
+            "label": "Noise",
+            "fallback": true,
+            "defaultExpanded": false
+          }
+        ],
+        "noiseFilter": []
+      }
     }
   ]
 }

@@ -1,7 +1,12 @@
 import { DEFAULT_AGE_THRESHOLDS } from "./format.js";
+import {
+  DEFAULT_NOTIFICATION_RULES,
+  validateNotificationRules,
+  normalizeNotificationRules,
+} from "./rules.js";
 
 export const DEFAULT_PANEL_SECTIONS = [
-  { type: "notifications" },
+  { type: "notifications", settings: DEFAULT_NOTIFICATION_RULES },
   {
     type: "group",
     id: "prs",
@@ -45,6 +50,12 @@ const validateSectionsArray = (sections, ctx) => {
       if (ctx.notificationsCount > 1) {
         return "only one section may have type \"notifications\"";
       }
+      if (s.settings !== undefined) {
+        const settingsErr = validateNotificationRules(s.settings);
+        if (settingsErr) {
+          return `notifications settings: ${settingsErr}`;
+        }
+      }
       continue;
     }
     if (s.type === "search") {
@@ -86,7 +97,14 @@ export const validatePanelSections = (data) => {
 };
 
 const normalizeSection = (s) => {
-  if (s.type === "notifications") return { type: "notifications" };
+  if (s.type === "notifications") {
+    return {
+      type: "notifications",
+      settings: s.settings
+        ? normalizeNotificationRules(s.settings)
+        : DEFAULT_NOTIFICATION_RULES,
+    };
+  }
   if (s.type === "group") {
     return {
       type: "group",
@@ -118,6 +136,22 @@ export const collectSearchSections = (sections) => {
   }
   return out;
 };
+
+const findNotificationSettings = (sections) => {
+  for (const s of sections) {
+    if (s.type === "notifications") return s.settings || null;
+    if (s.type === "group") {
+      const found = findNotificationSettings(s.sections);
+      if (found) return found;
+    }
+  }
+  return null;
+};
+
+// Walk the tree, find the notifications section (if present), return its settings.
+// Falls back to DEFAULT_NOTIFICATION_RULES if no notifications section exists.
+export const getNotificationRules = (sections) =>
+  findNotificationSettings(sections) || DEFAULT_NOTIFICATION_RULES;
 
 export const loadPanelSections = async () => {
   try {

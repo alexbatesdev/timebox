@@ -13,7 +13,7 @@ Personal daily scheduler built with React and Vite.
    - A **date** property (default name: `date`)
    - If your DB uses different names, set `VITE_NOTION_TITLE_PROP` / `VITE_NOTION_DATE_PROP` in `.env`.
 6. (Optional) For the loose ends panel, create a second database with a title property (default `Name`) and a checkbox (default `Done`), then set `VITE_NOTION_LOOSE_ENDS_DB`. Override the property names with `VITE_NOTION_LOOSE_ENDS_TITLE_PROP` / `VITE_NOTION_LOOSE_ENDS_DONE_PROP` if your DB uses different ones.
-7. (Optional) Add `VITE_GITHUB_TOKEN` for the notifications panel and `VITE_TEAMWORK_*` for Teamwork integration. To customize how notifications are categorized (the default sections are New Stuff / Updates / Noise), edit [`public/github-notification-rules.json`](/Users/alex.bates/Code/timebox/public/github-notification-rules.json).
+7. (Optional) Add `VITE_GITHUB_TOKEN` for the notifications panel and `VITE_TEAMWORK_*` for Teamwork integration. To customize how notifications are categorized (the default sections are New Stuff / Updates / Noise), edit the `settings` object on the notifications section in [`public/github-panel-sections.json`](/Users/alex.bates/Code/timebox/public/github-panel-sections.json).
 8. Run `npm run dev`.
 
 ## Schedule Selection
@@ -72,7 +72,7 @@ The full GitHub panel layout is configurable via [`public/github-panel-sections.
 
 Each entry has a `type` discriminator:
 
-- `"type": "notifications"` — placeholder slot for the Notifications section. No other fields. (Notification internals — categories and noise filter — still live in [`public/github-notification-rules.json`](/Users/alex.bates/Code/timebox/public/github-notification-rules.json).) Only one notifications slot is allowed anywhere in the tree.
+- `"type": "notifications"` — the Notifications section. Optional `settings` object configures the notification categories and noise filter (schema below). Only one notifications slot is allowed anywhere in the tree.
 - `"type": "search"` — a search-driven section, fetched via the GitHub Search API (`/search/issues`, which serves both Issues *and* PRs). Same query syntax you'd type into github.com.
 - `"type": "group"` — a collapsible wrapper containing other sections. Has its own `id`, `title`, optional `defaultExpanded`, and a recursive `sections` array. Sections inside a group render with smaller, nested-style headers. Groups can contain other groups.
 
@@ -81,7 +81,17 @@ Schema (default config — Notifications at top, two PR search sections grouped 
 ```json
 {
   "sections": [
-    { "type": "notifications" },
+    {
+      "type": "notifications",
+      "settings": {
+        "categories": [
+          { "id": "newStuff", "label": "New Stuff", "reasons": ["review_requested", "assign"], "defaultExpanded": true },
+          { "id": "updates",  "label": "Updates",   "reasons": ["mention", "team_mention", "comment", "author", "state_change"], "defaultExpanded": true },
+          { "id": "noise",    "label": "Noise",     "fallback": true, "defaultExpanded": false }
+        ],
+        "noiseFilter": ["ci_activity"]
+      }
+    },
     {
       "type": "group",
       "id": "prs",
@@ -150,6 +160,12 @@ For `"type": "search"` entries:
 - `accentColor` (optional) — left-border accent color for the section.
 - `defaultExpanded` (optional, default `true`) — whether the section starts expanded.
 - `ageThresholds` (optional) — array of `{ minHours, color, titleColor? }`. The color of the relative-time text (and optionally the title) escalates as an item ages past each threshold.
+
+For the `"type": "notifications"` entry's optional `settings` object:
+
+- `categories` — array defining how unread/read notifications are bucketed for display. Each category has `id` (unique string), `label` (header text), and either `reasons` (array of GitHub notification reason strings — `mention`, `review_requested`, `assign`, `team_mention`, `comment`, `author`, `state_change`, etc.) or `fallback: true` (catch-all for anything not matched by an earlier category). Optional `defaultExpanded` (default `true`). Exactly one category must be `fallback: true`.
+- `noiseFilter` — array of reason strings fetched in addition to the default participating-only feed and routed into the fallback category (e.g. `"ci_activity"`).
+- If `settings` is omitted, defaults are used (New Stuff / Updates / Noise + `ci_activity` noise filter).
 
 For `"type": "group"` entries:
 

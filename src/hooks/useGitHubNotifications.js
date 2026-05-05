@@ -7,14 +7,11 @@ import {
   markThreadRead,
   markThreadDone,
 } from "../github/api.js";
-import {
-  classifyTier,
-  loadNotificationRules,
-  DEFAULT_NOTIFICATION_RULES,
-} from "../github/rules.js";
+import { classifyTier } from "../github/rules.js";
 import {
   loadPanelSections,
   collectSearchSections,
+  getNotificationRules,
   DEFAULT_PANEL_SECTIONS,
 } from "../github/panelSections.js";
 import { usePinned } from "./usePinned.js";
@@ -40,16 +37,12 @@ export const useGitHubNotifications = () => {
   const [notifications, setNotifications] = useState([]);
   const [noiseNotifications, setNoiseNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [rules, setRules] = useState(DEFAULT_NOTIFICATION_RULES);
   const [panelSections, setPanelSections] = useState(DEFAULT_PANEL_SECTIONS);
   const pollTimeoutRef = useRef(null);
   const dismissedRef = useRef(loadDismissed());
 
   useEffect(() => {
     let cancelled = false;
-    loadNotificationRules().then((loaded) => {
-      if (!cancelled) setRules(loaded);
-    });
     loadPanelSections().then((loaded) => {
       if (!cancelled) setPanelSections(loaded);
     });
@@ -57,6 +50,8 @@ export const useGitHubNotifications = () => {
       cancelled = true;
     };
   }, []);
+
+  const rules = useMemo(() => getNotificationRules(panelSections), [panelSections]);
 
   const doFetch = useCallback(async () => {
     if (!configured) return;

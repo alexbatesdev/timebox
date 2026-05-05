@@ -22,7 +22,7 @@ export const DEFAULT_NOTIFICATION_RULES = {
   noiseFilter: ["ci_activity"],
 };
 
-const validateRules = (data) => {
+export const validateNotificationRules = (data) => {
   if (!data || !Array.isArray(data.categories) || data.categories.length === 0) {
     return "categories must be a non-empty array";
   }
@@ -47,35 +47,16 @@ const validateRules = (data) => {
   return null;
 };
 
-export const loadNotificationRules = async () => {
-  try {
-    const res = await fetch("/github-notification-rules.json", {
-      cache: "no-store",
-    });
-    if (!res.ok) return DEFAULT_NOTIFICATION_RULES;
-    const data = await res.json();
-    const err = validateRules(data);
-    if (err) {
-      console.warn(
-        `Invalid github-notification-rules.json: ${err}. Using defaults.`,
-      );
-      return DEFAULT_NOTIFICATION_RULES;
-    }
-    return {
-      categories: data.categories.map((c) => ({
-        id: c.id,
-        label: c.label,
-        reasons: c.reasons || [],
-        fallback: !!c.fallback,
-        defaultExpanded: c.defaultExpanded !== false,
-      })),
-      noiseFilter: data.noiseFilter,
-    };
-  } catch (err) {
-    console.warn("Failed to load github-notification-rules.json:", err);
-    return DEFAULT_NOTIFICATION_RULES;
-  }
-};
+export const normalizeNotificationRules = (data) => ({
+  categories: data.categories.map((c) => ({
+    id: c.id,
+    label: c.label,
+    reasons: c.reasons || [],
+    fallback: !!c.fallback,
+    defaultExpanded: c.defaultExpanded !== false,
+  })),
+  noiseFilter: data.noiseFilter,
+});
 
 export const classifyTier = (reason, rules) => {
   for (const c of rules.categories) {
