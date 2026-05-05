@@ -633,6 +633,7 @@ function SearchSection({
   defaultExpanded = true,
   accentColor,
   thresholds,
+  nested = false,
 }) {
   const [collapsed, setCollapsed] = useState(!defaultExpanded);
   const visible = items.filter((item) => !hiddenRepos.has(item.repo));
@@ -645,8 +646,18 @@ function SearchSection({
   }
   const repos = Object.keys(byRepo).sort();
 
+  const headerPadding = nested ? "6px 16px" : "10px 16px";
+  const caretSize = nested ? "9px" : "10px";
+  const titleFontSize = nested ? "11px" : "13px";
+  const titleColor = nested ? "#9ca3af" : "#e5e7eb";
+  const titleWeight = nested ? "600" : "700";
+  const detailFontSize = nested ? "9px" : "10px";
+  const wrapperStyle = nested
+    ? { marginBottom: "4px" }
+    : { borderBottom: "1px solid #252525" };
+
   return (
-    <div style={{ borderBottom: "1px solid #252525" }}>
+    <div style={wrapperStyle}>
       <button
         onClick={() => items.length > 0 && setCollapsed(!collapsed)}
         style={{
@@ -654,20 +665,20 @@ function SearchSection({
           alignItems: "center",
           gap: "6px",
           width: "100%",
-          padding: "10px 16px",
+          padding: headerPadding,
           background: "none",
           border: "none",
           cursor: items.length > 0 ? "pointer" : "default",
           fontFamily: "inherit",
         }}
       >
-        <span style={{ fontSize: "10px", color: "#6b7280" }}>
+        <span style={{ fontSize: caretSize, color: "#6b7280" }}>
           {items.length === 0 ? "◦" : collapsed ? "▶" : "▼"}
         </span>
-        <span style={{ fontSize: "13px", color: "#e5e7eb", fontWeight: "700" }}>
+        <span style={{ fontSize: titleFontSize, color: titleColor, fontWeight: titleWeight }}>
           {title}
         </span>
-        <span style={{ fontSize: "10px", color: "#6b7280" }}>
+        <span style={{ fontSize: detailFontSize, color: "#6b7280" }}>
           {visible.length > 0 && (
             <span
               style={{
@@ -942,67 +953,84 @@ export default function GitHubPanel({
               Loading...
             </div>
           )}
-          {(panelSections || []).map((section) => {
-            if (section.type === "notifications") {
-              const all = grouped.flatMap((g) => g.items);
-              const unread = all.filter((n) => n.unread).length;
-              const read = all.length - unread;
-              const parts = [];
-              if (unread > 0) parts.push(`${unread} unread`);
-              if (read > 0) parts.push(`${read} read`);
-              const detail = parts.join(", ") || null;
-              return (
-                <CollapsibleSection key="notifications" title="Notifications" detail={detail}>
-                  {grouped.map((g) => (
-                    <TierSection
-                      key={g.id}
-                      title={g.label}
-                      items={g.items}
-                      defaultExpanded={g.defaultExpanded}
-                      onMarkRead={onMarkRead}
-                      onMarkAllRead={onMarkAllRead}
-                      onDeleteAll={onDeleteAll}
-                      confirmDeleteId={confirmDeleteId}
-                      onConfirmDelete={handleConfirmDelete}
-                      pinnedIds={pinnedIds}
-                      onTogglePin={onTogglePin}
-                      activeIds={activeIds}
-                      onToggleActive={onToggleActive}
-                      activeColor={activeColor}
-                      expandedId={expandedId}
-                      onToggleExpand={handleToggleExpand}
-                      getNote={getNote}
-                      setNote={setNote}
-                    />
-                  ))}
-                </CollapsibleSection>
-              );
-            }
-            if (section.type === "search") {
-              return (
-                <SearchSection
-                  key={section.id}
-                  title={section.title}
-                  items={searchResults[section.id] || []}
-                  hiddenRepos={hiddenRepos}
-                  onToggleRepo={toggleHiddenRepo}
-                  pinnedIds={pinnedIds}
-                  onTogglePin={onTogglePin}
-                  activeIds={activeIds}
-                  onToggleActive={onToggleActive}
-                  activeColor={activeColor}
-                  expandedId={expandedId}
-                  onToggleExpand={handleToggleExpand}
-                  getNote={getNote}
-                  setNote={setNote}
-                  accentColor={section.accentColor}
-                  defaultExpanded={section.defaultExpanded}
-                  thresholds={section.ageThresholds}
-                />
-              );
-            }
-            return null;
-          })}
+          {(() => {
+            const renderSection = (section, { nested }) => {
+              if (section.type === "notifications") {
+                const all = grouped.flatMap((g) => g.items);
+                const unread = all.filter((n) => n.unread).length;
+                const read = all.length - unread;
+                const parts = [];
+                if (unread > 0) parts.push(`${unread} unread`);
+                if (read > 0) parts.push(`${read} read`);
+                const detail = parts.join(", ") || null;
+                return (
+                  <CollapsibleSection key="notifications" title="Notifications" detail={detail}>
+                    {grouped.map((g) => (
+                      <TierSection
+                        key={g.id}
+                        title={g.label}
+                        items={g.items}
+                        defaultExpanded={g.defaultExpanded}
+                        onMarkRead={onMarkRead}
+                        onMarkAllRead={onMarkAllRead}
+                        onDeleteAll={onDeleteAll}
+                        confirmDeleteId={confirmDeleteId}
+                        onConfirmDelete={handleConfirmDelete}
+                        pinnedIds={pinnedIds}
+                        onTogglePin={onTogglePin}
+                        activeIds={activeIds}
+                        onToggleActive={onToggleActive}
+                        activeColor={activeColor}
+                        expandedId={expandedId}
+                        onToggleExpand={handleToggleExpand}
+                        getNote={getNote}
+                        setNote={setNote}
+                      />
+                    ))}
+                  </CollapsibleSection>
+                );
+              }
+              if (section.type === "search") {
+                return (
+                  <SearchSection
+                    key={section.id}
+                    title={section.title}
+                    items={searchResults[section.id] || []}
+                    hiddenRepos={hiddenRepos}
+                    onToggleRepo={toggleHiddenRepo}
+                    pinnedIds={pinnedIds}
+                    onTogglePin={onTogglePin}
+                    activeIds={activeIds}
+                    onToggleActive={onToggleActive}
+                    activeColor={activeColor}
+                    expandedId={expandedId}
+                    onToggleExpand={handleToggleExpand}
+                    getNote={getNote}
+                    setNote={setNote}
+                    accentColor={section.accentColor}
+                    defaultExpanded={section.defaultExpanded}
+                    thresholds={section.ageThresholds}
+                    nested={nested}
+                  />
+                );
+              }
+              if (section.type === "group") {
+                return (
+                  <CollapsibleSection
+                    key={section.id}
+                    title={section.title}
+                    defaultExpanded={section.defaultExpanded}
+                  >
+                    {section.sections.map((child) => renderSection(child, { nested: true }))}
+                  </CollapsibleSection>
+                );
+              }
+              return null;
+            };
+            return (panelSections || []).map((section) =>
+              renderSection(section, { nested: false }),
+            );
+          })()}
           {hiddenRepos.size > 0 && (
             <button
               onClick={unhideAllRepos}

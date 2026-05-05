@@ -72,38 +72,70 @@ The full GitHub panel layout is configurable via [`public/github-panel-sections.
 
 Each entry has a `type` discriminator:
 
-- `"type": "notifications"` — placeholder slot for the Notifications section. No other fields. (Notification internals — categories and noise filter — still live in [`public/github-notification-rules.json`](/Users/alex.bates/Code/timebox/public/github-notification-rules.json).) Only one notifications slot is allowed.
+- `"type": "notifications"` — placeholder slot for the Notifications section. No other fields. (Notification internals — categories and noise filter — still live in [`public/github-notification-rules.json`](/Users/alex.bates/Code/timebox/public/github-notification-rules.json).) Only one notifications slot is allowed anywhere in the tree.
 - `"type": "search"` — a search-driven section, fetched via the GitHub Search API (`/search/issues`, which serves both Issues *and* PRs). Same query syntax you'd type into github.com.
+- `"type": "group"` — a collapsible wrapper containing other sections. Has its own `id`, `title`, optional `defaultExpanded`, and a recursive `sections` array. Sections inside a group render with smaller, nested-style headers. Groups can contain other groups.
 
-Schema:
+Schema (default config — Notifications at top, two PR search sections grouped under "PRs"):
 
 ```json
 {
   "sections": [
     { "type": "notifications" },
     {
-      "type": "search",
-      "id": "review-requests",
-      "title": "Awaiting My Review",
-      "query": "is:pr is:open draft:false user-review-requested:@me sort:updated-desc",
-      "accentColor": "#3b82f6",
+      "type": "group",
+      "id": "prs",
+      "title": "PRs",
       "defaultExpanded": true,
-      "ageThresholds": [
-        { "minHours": 0, "color": "#6b7280" },
-        { "minHours": 16, "color": "#f59e0b" },
-        { "minHours": 72, "color": "#dc2626", "titleColor": "#dc2626" }
+      "sections": [
+        {
+          "type": "search",
+          "id": "review-requests",
+          "title": "Awaiting My Review",
+          "query": "is:pr is:open draft:false user-review-requested:@me sort:updated-desc",
+          "accentColor": "#3b82f6",
+          "ageThresholds": [
+            { "minHours": 0, "color": "#6b7280" },
+            { "minHours": 16, "color": "#f59e0b" },
+            { "minHours": 72, "color": "#dc2626", "titleColor": "#dc2626" }
+          ]
+        },
+        {
+          "type": "search",
+          "id": "my-prs",
+          "title": "My Open PRs",
+          "query": "is:pr is:open author:@me sort:updated-desc",
+          "accentColor": "#22c55e",
+          "ageThresholds": [
+            { "minHours": 0, "color": "#6b7280" },
+            { "minHours": 16, "color": "#f59e0b" },
+            { "minHours": 168, "color": "#dc2626", "titleColor": "#dc2626" }
+          ]
+        }
       ]
-    },
+    }
+  ]
+}
+```
+
+You can mix freely — put a search section at the top level next to Notifications, group multiple Issues queries under an "Issues" header, etc. Example with an Issues group:
+
+```json
+{
+  "sections": [
+    { "type": "notifications" },
     {
-      "type": "search",
-      "id": "my-issues",
-      "title": "My Open Issues",
-      "query": "is:issue is:open author:@me sort:updated-desc",
-      "accentColor": "#a855f7",
-      "ageThresholds": [
-        { "minHours": 0, "color": "#6b7280" },
-        { "minHours": 72, "color": "#f59e0b" },
-        { "minHours": 336, "color": "#dc2626" }
+      "type": "group",
+      "id": "issues",
+      "title": "Issues",
+      "sections": [
+        {
+          "type": "search",
+          "id": "my-issues",
+          "title": "My Open Issues",
+          "query": "is:issue is:open author:@me sort:updated-desc",
+          "accentColor": "#a855f7"
+        }
       ]
     }
   ]
@@ -119,9 +151,16 @@ For `"type": "search"` entries:
 - `defaultExpanded` (optional, default `true`) — whether the section starts expanded.
 - `ageThresholds` (optional) — array of `{ minHours, color, titleColor? }`. The color of the relative-time text (and optionally the title) escalates as an item ages past each threshold.
 
-**Order in the array = render order.** Reorder entries to put a search section above Notifications, interleave Issues between PR sections, etc.
+For `"type": "group"` entries:
 
-If the file is missing or invalid (unknown `type`, duplicate `id`, multiple `notifications` slots, etc.), the app falls back to a built-in default that includes Notifications, "Awaiting My Review", and "My Open PRs" in that order.
+- `id` — unique per group (across all groups, regardless of nesting depth).
+- `title` — header text for the collapsible wrapper.
+- `defaultExpanded` (optional, default `true`) — whether the group starts expanded.
+- `sections` — array of child sections (search, group, or notifications). Children render with smaller, nested-style headers.
+
+**Order in the array = render order.** Reorder entries to put a search section above Notifications, interleave Issues between PR groups, move things in or out of groups, etc.
+
+If the file is missing or invalid (unknown `type`, duplicate `id`, multiple `notifications` slots, malformed thresholds, etc.), the app falls back to a built-in default with Notifications first and a "PRs" group containing "Awaiting My Review" and "My Open PRs".
 
 ### "Active" highlight color
 

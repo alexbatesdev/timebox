@@ -2,31 +2,39 @@
   "sections": [
     { "type": "notifications" },
     {
-      "type": "search",
-      "id": "review-requests",
-      "title": "Awaiting My Review",
-      "query": "is:pr is:open draft:false user-review-requested:@me sort:updated-desc",
-      "accentColor": "#3b82f6",
+      "type": "group",
+      "id": "prs",
+      "title": "PRs",
       "defaultExpanded": true,
-      "ageThresholds": [
-        { "minHours": 0, "color": "#6b7280" },
-        { "minHours": 8, "color": "#e5e7eb" },
-        { "minHours": 16, "color": "#f59e0b" },
-        { "minHours": 72, "color": "#dc2626", "titleColor": "#dc2626" }
-      ]
-    },
-    {
-      "type": "search",
-      "id": "my-prs",
-      "title": "My Open PRs",
-      "query": "is:pr is:open author:@me sort:updated-desc",
-      "accentColor": "#22c55e",
-      "defaultExpanded": true,
-      "ageThresholds": [
-        { "minHours": 0, "color": "#6b7280" },
-        { "minHours": 8, "color": "#e5e7eb" },
-        { "minHours": 16, "color": "#f59e0b" },
-        { "minHours": 168, "color": "#dc2626", "titleColor": "#dc2626" }
+      "sections": [
+        {
+          "type": "search",
+          "id": "review-requests",
+          "title": "Awaiting My Review",
+          "query": "is:pr is:open draft:false user-review-requested:@me sort:updated-asc",
+          "accentColor": "#3b82f6",
+          "defaultExpanded": true,
+          "ageThresholds": [
+            { "minHours": 0, "color": "#6b7280" },
+            { "minHours": 8, "color": "#e5e7eb" },
+            { "minHours": 16, "color": "#f59e0b" },
+            { "minHours": 72, "color": "#dc2626", "titleColor": "#dc2626" }
+          ]
+        },
+        {
+          "type": "search",
+          "id": "my-prs",
+          "title": "My Open PRs",
+          "query": "is:pr is:open author:@me sort:updated-desc",
+          "accentColor": "#22c55e",
+          "defaultExpanded": true,
+          "ageThresholds": [
+            { "minHours": 0, "color": "#6b7280" },
+            { "minHours": 8, "color": "#e5e7eb" },
+            { "minHours": 16, "color": "#f59e0b" },
+            { "minHours": 168, "color": "#dc2626", "titleColor": "#dc2626" }
+          ]
+        }
       ]
     }
   ]

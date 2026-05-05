@@ -3,22 +3,30 @@ import { DEFAULT_AGE_THRESHOLDS } from "./format.js";
 export const DEFAULT_PANEL_SECTIONS = [
   { type: "notifications" },
   {
-    type: "search",
-    id: "review-requests",
-    title: "Awaiting My Review",
-    query: "is:pr is:open draft:false user-review-requested:@me sort:updated-desc",
-    accentColor: "#3b82f6",
+    type: "group",
+    id: "prs",
+    title: "PRs",
     defaultExpanded: true,
-    ageThresholds: DEFAULT_AGE_THRESHOLDS.reviewRequests,
-  },
-  {
-    type: "search",
-    id: "my-prs",
-    title: "My Open PRs",
-    query: "is:pr is:open author:@me sort:updated-desc",
-    accentColor: "#22c55e",
-    defaultExpanded: true,
-    ageThresholds: DEFAULT_AGE_THRESHOLDS.mine,
+    sections: [
+      {
+        type: "search",
+        id: "review-requests",
+        title: "Awaiting My Review",
+        query: "is:pr is:open draft:false user-review-requested:@me sort:updated-desc",
+        accentColor: "#3b82f6",
+        defaultExpanded: true,
+        ageThresholds: DEFAULT_AGE_THRESHOLDS.reviewRequests,
+      },
+      {
+        type: "search",
+        id: "my-prs",
+        title: "My Open PRs",
+        query: "is:pr is:open author:@me sort:updated-desc",
+        accentColor: "#22c55e",
+        defaultExpanded: true,
+        ageThresholds: DEFAULT_AGE_THRESHOLDS.mine,
+      },
+    ],
   },
 ];
 
@@ -29,39 +37,65 @@ const validateThresholds = (thresholds) => {
   );
 };
 
-export const validatePanelSections = (data) => {
-  if (!data || !Array.isArray(data.sections)) {
-    return "sections must be an array";
-  }
-  let notificationsCount = 0;
-  const seenSearchIds = new Set();
-  for (const s of data.sections) {
+const validateSectionsArray = (sections, ctx) => {
+  if (!Array.isArray(sections)) return "sections must be an array";
+  for (const s of sections) {
     if (s.type === "notifications") {
-      notificationsCount++;
-      if (notificationsCount > 1) {
+      ctx.notificationsCount++;
+      if (ctx.notificationsCount > 1) {
         return "only one section may have type \"notifications\"";
       }
       continue;
     }
-    if (s.type !== "search") {
-      return `unknown section type "${s.type}"`;
+    if (s.type === "search") {
+      if (typeof s.id !== "string" || !s.id) return "search section needs a non-empty id";
+      if (ctx.seenSearchIds.has(s.id)) return `duplicate search section id "${s.id}"`;
+      ctx.seenSearchIds.add(s.id);
+      if (typeof s.title !== "string") return `search section "${s.id}" needs a title`;
+      if (typeof s.query !== "string" || !s.query) {
+        return `search section "${s.id}" needs a non-empty query`;
+      }
+      if (s.ageThresholds !== undefined && !validateThresholds(s.ageThresholds)) {
+        return `search section "${s.id}" has invalid ageThresholds`;
+      }
+      continue;
     }
-    if (typeof s.id !== "string" || !s.id) return "search section needs a non-empty id";
-    if (seenSearchIds.has(s.id)) return `duplicate search section id "${s.id}"`;
-    seenSearchIds.add(s.id);
-    if (typeof s.title !== "string") return `search section "${s.id}" needs a title`;
-    if (typeof s.query !== "string" || !s.query) {
-      return `search section "${s.id}" needs a non-empty query`;
+    if (s.type === "group") {
+      if (typeof s.id !== "string" || !s.id) return "group section needs a non-empty id";
+      if (ctx.seenGroupIds.has(s.id)) return `duplicate group section id "${s.id}"`;
+      ctx.seenGroupIds.add(s.id);
+      if (typeof s.title !== "string") return `group section "${s.id}" needs a title`;
+      const childErr = validateSectionsArray(s.sections, ctx);
+      if (childErr) return childErr;
+      continue;
     }
-    if (s.ageThresholds !== undefined && !validateThresholds(s.ageThresholds)) {
-      return `search section "${s.id}" has invalid ageThresholds`;
-    }
+    return `unknown section type "${s.type}"`;
   }
   return null;
 };
 
+export const validatePanelSections = (data) => {
+  if (!data || !Array.isArray(data.sections)) {
+    return "sections must be an array";
+  }
+  return validateSectionsArray(data.sections, {
+    notificationsCount: 0,
+    seenSearchIds: new Set(),
+    seenGroupIds: new Set(),
+  });
+};
+
 const normalizeSection = (s) => {
   if (s.type === "notifications") return { type: "notifications" };
+  if (s.type === "group") {
+    return {
+      type: "group",
+      id: s.id,
+      title: s.title,
+      defaultExpanded: s.defaultExpanded !== false,
+      sections: s.sections.map(normalizeSection),
+    };
+  }
   return {
     type: "search",
     id: s.id,
@@ -73,6 +107,16 @@ const normalizeSection = (s) => {
       ? s.ageThresholds
       : DEFAULT_AGE_THRESHOLDS.mine,
   };
+};
+
+// Recursively collect all "search" sections from a tree of panel sections.
+export const collectSearchSections = (sections) => {
+  const out = [];
+  for (const s of sections) {
+    if (s.type === "search") out.push(s);
+    else if (s.type === "group") out.push(...collectSearchSections(s.sections));
+  }
+  return out;
 };
 
 export const loadPanelSections = async () => {

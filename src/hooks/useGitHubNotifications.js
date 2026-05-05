@@ -14,6 +14,7 @@ import {
 } from "../github/rules.js";
 import {
   loadPanelSections,
+  collectSearchSections,
   DEFAULT_PANEL_SECTIONS,
 } from "../github/panelSections.js";
 import { usePinned } from "./usePinned.js";
@@ -158,7 +159,7 @@ export const useGitHubNotifications = () => {
   const loadSearchResults = useCallback(async () => {
     if (!configured) return;
     try {
-      const searchSections = panelSections.filter((s) => s.type === "search");
+      const searchSections = collectSearchSections(panelSections);
       const results = await Promise.all(
         searchSections.map(async (section) => {
           try {
