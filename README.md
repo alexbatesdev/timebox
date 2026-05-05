@@ -66,16 +66,23 @@ Example:
 
 If `timeFormat` is omitted or unknown, it falls back to `lazyOpinionated`. The format applies to both reads (parsing config strings, parsing legacy Notion block titles) and writes (Notion block titles, markdown exports), so changing it requires either rewriting your config strings or letting the app re-emit them on the next Notion send.
 
-### GitHub PR sections
+### GitHub Panel Sections
 
-The Pull Requests section of the GitHub panel is fully configurable via [`public/github-pr-sections.json`](/Users/alex.bates/Code/timebox/public/github-pr-sections.json). Each entry defines one panel section, driven by a GitHub Search query (the same syntax you'd type in github.com).
+The full GitHub panel layout is configurable via [`public/github-panel-sections.json`](/Users/alex.bates/Code/timebox/public/github-panel-sections.json). Each entry is a top-level section in the panel; entries are rendered in the order they appear in the array.
+
+Each entry has a `type` discriminator:
+
+- `"type": "notifications"` — placeholder slot for the Notifications section. No other fields. (Notification internals — categories and noise filter — still live in [`public/github-notification-rules.json`](/Users/alex.bates/Code/timebox/public/github-notification-rules.json).) Only one notifications slot is allowed.
+- `"type": "search"` — a search-driven section, fetched via the GitHub Search API (`/search/issues`, which serves both Issues *and* PRs). Same query syntax you'd type into github.com.
 
 Schema:
 
 ```json
 {
   "sections": [
+    { "type": "notifications" },
     {
+      "type": "search",
       "id": "review-requests",
       "title": "Awaiting My Review",
       "query": "is:pr is:open draft:false user-review-requested:@me sort:updated-desc",
@@ -86,21 +93,35 @@ Schema:
         { "minHours": 16, "color": "#f59e0b" },
         { "minHours": 72, "color": "#dc2626", "titleColor": "#dc2626" }
       ]
+    },
+    {
+      "type": "search",
+      "id": "my-issues",
+      "title": "My Open Issues",
+      "query": "is:issue is:open author:@me sort:updated-desc",
+      "accentColor": "#a855f7",
+      "ageThresholds": [
+        { "minHours": 0, "color": "#6b7280" },
+        { "minHours": 72, "color": "#f59e0b" },
+        { "minHours": 336, "color": "#dc2626" }
+      ]
     }
   ]
 }
 ```
 
-- `id` — unique per section. Used as the React key and the bucket key for fetched results.
+For `"type": "search"` entries:
+
+- `id` — unique per search section. Used as the React key and the bucket key for fetched results.
 - `title` — section header text.
-- `query` — any valid GitHub Search query for issues/PRs (e.g. `is:pr is:closed author:@me sort:created-desc`, `is:pr is:open draft:false user-review-requested:@me`). Each section is fetched independently via the GitHub Search API.
+- `query` — any valid GitHub Search query for issues or PRs. Examples: `is:issue is:open author:@me`, `is:pr is:closed author:@me sort:created-desc`, `is:pr is:open draft:false user-review-requested:@me`. Each section is fetched independently.
 - `accentColor` (optional) — left-border accent color for the section.
 - `defaultExpanded` (optional, default `true`) — whether the section starts expanded.
-- `ageThresholds` (optional) — array of `{ minHours, color, titleColor? }`. The color of the relative-time text (and optionally the PR title) escalates as a PR ages past each threshold.
+- `ageThresholds` (optional) — array of `{ minHours, color, titleColor? }`. The color of the relative-time text (and optionally the title) escalates as an item ages past each threshold.
 
-**Order in the array = render order.** The first section is rendered at the top.
+**Order in the array = render order.** Reorder entries to put a search section above Notifications, interleave Issues between PR sections, etc.
 
-If the file is missing or invalid, the app falls back to two built-in defaults: "Awaiting My Review" and "My Open PRs".
+If the file is missing or invalid (unknown `type`, duplicate `id`, multiple `notifications` slots, etc.), the app falls back to a built-in default that includes Notifications, "Awaiting My Review", and "My Open PRs" in that order.
 
 ### "Active" highlight color
 

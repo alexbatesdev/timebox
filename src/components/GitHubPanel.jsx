@@ -430,13 +430,13 @@ const saveHiddenRepos = (set) => {
   localStorage.setItem(HIDDEN_REPOS_KEY, JSON.stringify([...set]));
 };
 
-export function PRItem({ pr, pinned, onTogglePin, active, onToggleActive, activeColor, expanded, onToggleExpand, noteText, onNoteChange, thresholds }) {
-  const { timeColor, titleColor } = getAgeColors(pr.updatedAt, thresholds);
+export function SearchResultItem({ item, pinned, onTogglePin, active, onToggleActive, activeColor, expanded, onToggleExpand, noteText, onNoteChange, thresholds }) {
+  const { timeColor, titleColor } = getAgeColors(item.updatedAt, thresholds);
   return (
     <div style={{ borderBottom: "1px solid #1a1a1a", padding: "6px 0" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
         <button
-          onClick={() => onToggleExpand(pr.id)}
+          onClick={() => onToggleExpand(item.id)}
           style={{
             background: "none",
             border: "none",
@@ -451,7 +451,7 @@ export function PRItem({ pr, pinned, onTogglePin, active, onToggleActive, active
           {expanded ? "▼" : "▶"}
         </button>
         <a
-          href={pr.url}
+          href={item.url}
           target="_blank"
           rel="noopener noreferrer"
           style={{
@@ -466,11 +466,11 @@ export function PRItem({ pr, pinned, onTogglePin, active, onToggleActive, active
             textDecoration: "none",
             textAlign: "left",
           }}
-          title={pr.title}
+          title={item.title}
         >
-          {pr.title}
+          {item.title}
         </a>
-        {pr.draft && (
+        {item.draft && (
           <span
             style={{
               fontSize: "9px",
@@ -493,9 +493,9 @@ export function PRItem({ pr, pinned, onTogglePin, active, onToggleActive, active
           marginTop: "2px",
         }}
       >
-        <span style={{ fontSize: "10px", color: "#6b7280" }}>#{pr.number}</span>
-        <span style={{ fontSize: "10px", color: "#4b5563" }}>{pr.author}</span>
-        <span style={{ fontSize: "10px", color: "#4b5563" }}>{pr.repo}</span>
+        <span style={{ fontSize: "10px", color: "#6b7280" }}>#{item.number}</span>
+        <span style={{ fontSize: "10px", color: "#4b5563" }}>{item.author}</span>
+        <span style={{ fontSize: "10px", color: "#4b5563" }}>{item.repo}</span>
         <span
           style={{
             fontSize: "12px",
@@ -504,10 +504,10 @@ export function PRItem({ pr, pinned, onTogglePin, active, onToggleActive, active
             marginLeft: "auto",
           }}
         >
-          {relativeTime(pr.updatedAt)}
+          {relativeTime(item.updatedAt)}
         </span>
         <button
-          onClick={() => onTogglePin(pr.id)}
+          onClick={() => onTogglePin(item.id)}
           title={pinned ? "Unpin" : "Pin"}
           style={{
             background: "none",
@@ -523,7 +523,7 @@ export function PRItem({ pr, pinned, onTogglePin, active, onToggleActive, active
           {pinned ? "★" : "☆"}
         </button>
         <button
-          onClick={() => onToggleActive(pr.id)}
+          onClick={() => onToggleActive(item.id)}
           title={active ? "Stop active" : "Mark active"}
           style={{
             background: "none",
@@ -548,7 +548,7 @@ export function PRItem({ pr, pinned, onTogglePin, active, onToggleActive, active
   );
 }
 
-function RepoGroup({ repo, prs, onHide, pinnedIds, onTogglePin, activeIds, onToggleActive, activeColor, expandedId, onToggleExpand, getNote, setNote, thresholds }) {
+function RepoGroup({ repo, items, onHide, pinnedIds, onTogglePin, activeIds, onToggleActive, activeColor, expandedId, onToggleExpand, getNote, setNote, thresholds }) {
   const [collapsed, setCollapsed] = useState(false);
   return (
     <div>
@@ -578,7 +578,7 @@ function RepoGroup({ repo, prs, onHide, pinnedIds, onTogglePin, activeIds, onTog
         <span style={{ fontSize: "10px", color: "#6b7280", fontWeight: "600" }}>
           {repo}
         </span>
-        <span style={{ fontSize: "9px", color: "#4b5563" }}>{prs.length}</span>
+        <span style={{ fontSize: "9px", color: "#4b5563" }}>{items.length}</span>
         <button
           onClick={onHide}
           title={`Hide ${repo}`}
@@ -596,19 +596,19 @@ function RepoGroup({ repo, prs, onHide, pinnedIds, onTogglePin, activeIds, onTog
           hide
         </button>
       </div>
-      {!collapsed && prs.map((pr) => (
-        <PRItem
-          key={pr.id}
-          pr={pr}
-          pinned={pinnedIds?.has(String(pr.id))}
+      {!collapsed && items.map((item) => (
+        <SearchResultItem
+          key={item.id}
+          item={item}
+          pinned={pinnedIds?.has(String(item.id))}
           onTogglePin={onTogglePin}
-          active={activeIds?.has(String(pr.id)) ?? false}
+          active={activeIds?.has(String(item.id)) ?? false}
           onToggleActive={onToggleActive}
           activeColor={activeColor}
-          expanded={expandedId === pr.id}
+          expanded={expandedId === item.id}
           onToggleExpand={onToggleExpand}
-          noteText={getNote(pr.id)}
-          onNoteChange={(text) => setNote(pr.id, text)}
+          noteText={getNote(item.id)}
+          onNoteChange={(text) => setNote(item.id, text)}
           thresholds={thresholds}
         />
       ))}
@@ -616,7 +616,7 @@ function RepoGroup({ repo, prs, onHide, pinnedIds, onTogglePin, activeIds, onTog
   );
 }
 
-function PRSection({
+function SearchSection({
   title,
   items,
   hiddenRepos,
@@ -635,18 +635,18 @@ function PRSection({
   thresholds,
 }) {
   const [collapsed, setCollapsed] = useState(!defaultExpanded);
-  const visible = items.filter((pr) => !hiddenRepos.has(pr.repo));
+  const visible = items.filter((item) => !hiddenRepos.has(item.repo));
   const hiddenCount = items.length - visible.length;
 
   // Group by repo
   const byRepo = {};
-  for (const pr of visible) {
-    (byRepo[pr.repo] || (byRepo[pr.repo] = [])).push(pr);
+  for (const item of visible) {
+    (byRepo[item.repo] || (byRepo[item.repo] = [])).push(item);
   }
   const repos = Object.keys(byRepo).sort();
 
   return (
-    <div style={{ marginBottom: "4px" }}>
+    <div style={{ borderBottom: "1px solid #252525" }}>
       <button
         onClick={() => items.length > 0 && setCollapsed(!collapsed)}
         style={{
@@ -654,20 +654,20 @@ function PRSection({
           alignItems: "center",
           gap: "6px",
           width: "100%",
-          padding: "6px 16px",
+          padding: "10px 16px",
           background: "none",
           border: "none",
           cursor: items.length > 0 ? "pointer" : "default",
           fontFamily: "inherit",
         }}
       >
-        <span style={{ fontSize: "9px", color: "#6b7280" }}>
+        <span style={{ fontSize: "10px", color: "#6b7280" }}>
           {items.length === 0 ? "◦" : collapsed ? "▶" : "▼"}
         </span>
-        <span style={{ fontSize: "11px", color: "#9ca3af", fontWeight: "600" }}>
+        <span style={{ fontSize: "13px", color: "#e5e7eb", fontWeight: "700" }}>
           {title}
         </span>
-        <span style={{ fontSize: "9px", color: "#4b5563" }}>
+        <span style={{ fontSize: "10px", color: "#6b7280" }}>
           {visible.length > 0 && (
             <span
               style={{
@@ -691,12 +691,12 @@ function PRSection({
         </span>
       </button>
       {!collapsed && visible.length > 0 && (
-        <div style={{ padding: "0 16px", borderLeft: accentColor ? `2px solid ${accentColor}` : "none", marginLeft: accentColor ? "14px" : "0" }}>
+        <div style={{ padding: "0 16px 8px", borderLeft: accentColor ? `2px solid ${accentColor}` : "none", marginLeft: accentColor ? "14px" : "0" }}>
           {repos.map((repo) => (
             <RepoGroup
               key={repo}
               repo={repo}
-              prs={byRepo[repo]}
+              items={byRepo[repo]}
               onHide={() => onToggleRepo(repo)}
               pinnedIds={pinnedIds}
               onTogglePin={onTogglePin}
@@ -770,9 +770,9 @@ export default function GitHubPanel({
   onToggleActive,
   activeColor,
   onLoadNoise,
-  prs,
-  prSections,
-  onLoadPRs,
+  searchResults,
+  panelSections,
+  onLoadSearchResults,
 }) {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [hiddenRepos, setHiddenRepos] = useState(loadHiddenRepos);
@@ -806,9 +806,9 @@ export default function GitHubPanel({
   useEffect(() => {
     if (open) {
       onLoadNoise();
-      onLoadPRs();
+      onLoadSearchResults();
     }
-  }, [open, onLoadNoise, onLoadPRs]);
+  }, [open, onLoadNoise, onLoadSearchResults]);
 
   const handleConfirmDelete = (threadId) => {
     if (confirmDeleteId === threadId) {
@@ -942,91 +942,85 @@ export default function GitHubPanel({
               Loading...
             </div>
           )}
-          <CollapsibleSection
-            title="Pull Requests"
-            detail={(() => {
-              const visible = (prSections || []).reduce((sum, section) => {
-                const items = prs[section.id] || [];
-                return sum + items.filter((pr) => !hiddenRepos.has(pr.repo)).length;
-              }, 0);
-              return visible > 0 ? `${visible} visible` : null;
-            })()}
-          >
-            {(prSections || []).map((section) => (
-              <PRSection
-                key={section.id}
-                title={section.title}
-                items={prs[section.id] || []}
-                hiddenRepos={hiddenRepos}
-                onToggleRepo={toggleHiddenRepo}
-                pinnedIds={pinnedIds}
-                onTogglePin={onTogglePin}
-                activeIds={activeIds}
-                onToggleActive={onToggleActive}
-                activeColor={activeColor}
-                expandedId={expandedId}
-                onToggleExpand={handleToggleExpand}
-                getNote={getNote}
-                setNote={setNote}
-                accentColor={section.accentColor}
-                defaultExpanded={section.defaultExpanded}
-                thresholds={section.ageThresholds}
-              />
-            ))}
-            {hiddenRepos.size > 0 && (
-              <button
-                onClick={unhideAllRepos}
-                style={{
-                  display: "block",
-                  margin: "4px 16px 8px",
-                  background: "none",
-                  border: "none",
-                  color: "#4b5563",
-                  cursor: "pointer",
-                  fontSize: "10px",
-                  fontFamily: "inherit",
-                }}
-              >
-                Show {hiddenRepos.size} hidden repo
-                {hiddenRepos.size > 1 ? "s" : ""}
-              </button>
-            )}
-          </CollapsibleSection>
-          <CollapsibleSection
-            title="Notifications"
-            detail={(() => {
+          {(panelSections || []).map((section) => {
+            if (section.type === "notifications") {
               const all = grouped.flatMap((g) => g.items);
               const unread = all.filter((n) => n.unread).length;
               const read = all.length - unread;
               const parts = [];
               if (unread > 0) parts.push(`${unread} unread`);
               if (read > 0) parts.push(`${read} read`);
-              return parts.join(", ") || null;
-            })()}
-          >
-            {grouped.map((g) => (
-              <TierSection
-                key={g.id}
-                title={g.label}
-                items={g.items}
-                defaultExpanded={g.defaultExpanded}
-                onMarkRead={onMarkRead}
-                onMarkAllRead={onMarkAllRead}
-                onDeleteAll={onDeleteAll}
-                confirmDeleteId={confirmDeleteId}
-                onConfirmDelete={handleConfirmDelete}
-                pinnedIds={pinnedIds}
-                onTogglePin={onTogglePin}
-                activeIds={activeIds}
-                onToggleActive={onToggleActive}
-                activeColor={activeColor}
-                expandedId={expandedId}
-                onToggleExpand={handleToggleExpand}
-                getNote={getNote}
-                setNote={setNote}
-              />
-            ))}
-          </CollapsibleSection>
+              const detail = parts.join(", ") || null;
+              return (
+                <CollapsibleSection key="notifications" title="Notifications" detail={detail}>
+                  {grouped.map((g) => (
+                    <TierSection
+                      key={g.id}
+                      title={g.label}
+                      items={g.items}
+                      defaultExpanded={g.defaultExpanded}
+                      onMarkRead={onMarkRead}
+                      onMarkAllRead={onMarkAllRead}
+                      onDeleteAll={onDeleteAll}
+                      confirmDeleteId={confirmDeleteId}
+                      onConfirmDelete={handleConfirmDelete}
+                      pinnedIds={pinnedIds}
+                      onTogglePin={onTogglePin}
+                      activeIds={activeIds}
+                      onToggleActive={onToggleActive}
+                      activeColor={activeColor}
+                      expandedId={expandedId}
+                      onToggleExpand={handleToggleExpand}
+                      getNote={getNote}
+                      setNote={setNote}
+                    />
+                  ))}
+                </CollapsibleSection>
+              );
+            }
+            if (section.type === "search") {
+              return (
+                <SearchSection
+                  key={section.id}
+                  title={section.title}
+                  items={searchResults[section.id] || []}
+                  hiddenRepos={hiddenRepos}
+                  onToggleRepo={toggleHiddenRepo}
+                  pinnedIds={pinnedIds}
+                  onTogglePin={onTogglePin}
+                  activeIds={activeIds}
+                  onToggleActive={onToggleActive}
+                  activeColor={activeColor}
+                  expandedId={expandedId}
+                  onToggleExpand={handleToggleExpand}
+                  getNote={getNote}
+                  setNote={setNote}
+                  accentColor={section.accentColor}
+                  defaultExpanded={section.defaultExpanded}
+                  thresholds={section.ageThresholds}
+                />
+              );
+            }
+            return null;
+          })}
+          {hiddenRepos.size > 0 && (
+            <button
+              onClick={unhideAllRepos}
+              style={{
+                display: "block",
+                margin: "4px 16px 8px",
+                background: "none",
+                border: "none",
+                color: "#4b5563",
+                cursor: "pointer",
+                fontSize: "10px",
+                fontFamily: "inherit",
+              }}
+            >
+              Show {hiddenRepos.size} hidden repo
+              {hiddenRepos.size > 1 ? "s" : ""}
+            </button>
+          )}
         </div>
       </div>
     </>

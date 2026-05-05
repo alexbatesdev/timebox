@@ -663,14 +663,14 @@ export default function App() {
   const favoriteGithubNotifs = allGhNotifs.filter((n) =>
     github.pinnedIds.has(String(n.id)),
   );
-  const favoritePRs = Object.values(github.prs || {})
+  const favoriteSearchResults = Object.values(github.searchResults || {})
     .flat()
-    .filter((pr) => github.pinnedIds.has(String(pr.id)));
+    .filter((item) => github.pinnedIds.has(String(item.id)));
   const favoriteCount =
     favoriteLooseEnds.length +
     favoriteTeamworkTasks.length +
     favoriteGithubNotifs.length +
-    favoritePRs.length;
+    favoriteSearchResults.length;
 
   return (
     <div
@@ -746,9 +746,9 @@ export default function App() {
               onToggleActive={github.toggleActive}
               activeColor={config?.activeColor}
               onLoadNoise={github.loadNoise}
-              prs={github.prs}
-              prSections={github.prSections}
-              onLoadPRs={github.loadPRs}
+              searchResults={github.searchResults}
+              panelSections={github.panelSections}
+              onLoadSearchResults={github.loadSearchResults}
             />
           )}
         </div>
@@ -913,12 +913,12 @@ export default function App() {
           ghActiveIds={github.activeIds}
           onToggleActiveGh={github.toggleActive}
           favoriteGithubNotifs={favoriteGithubNotifs}
-          favoritePRs={favoritePRs}
+          favoriteSearchResults={favoriteSearchResults}
           onMarkRead={github.markRead}
           onMarkDone={github.markDone}
           onTogglePinGh={github.togglePin}
           onLoadNoise={github.loadNoise}
-          onLoadPRs={github.loadPRs}
+          onLoadSearchResults={github.loadSearchResults}
         />
       </div>
     </div>

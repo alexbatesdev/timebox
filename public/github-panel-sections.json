@@ -1,6 +1,8 @@
 {
   "sections": [
+    { "type": "notifications" },
     {
+      "type": "search",
       "id": "review-requests",
       "title": "Awaiting My Review",
       "query": "is:pr is:open draft:false user-review-requested:@me sort:updated-desc",
@@ -14,6 +16,7 @@
       ]
     },
     {
+      "type": "search",
       "id": "my-prs",
       "title": "My Open PRs",
       "query": "is:pr is:open author:@me sort:updated-desc",

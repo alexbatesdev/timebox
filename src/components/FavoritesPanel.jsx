@@ -3,7 +3,7 @@ import { useNotes } from "../hooks/useNotes.js";
 import { useTeamworkExpand } from "../hooks/useTeamworkExpand.js";
 import { LooseEndItem } from "./LooseEndsPanel.jsx";
 import { TaskNode } from "./TeamworkPanel.jsx";
-import { NotificationItem, PRItem } from "./GitHubPanel.jsx";
+import { NotificationItem, SearchResultItem } from "./GitHubPanel.jsx";
 import { DEFAULT_AGE_THRESHOLDS } from "../github/format.js";
 
 function Section({ title, count, children }) {
@@ -62,12 +62,12 @@ export default function FavoritesPanel({
   // github
   ghPinnedIds,
   favoriteGithubNotifs,
-  favoritePRs,
+  favoriteSearchResults,
   onMarkRead,
   onMarkDone,
   onTogglePinGh,
   onLoadNoise,
-  onLoadPRs,
+  onLoadSearchResults,
 }) {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [expandedNotifId, setExpandedNotifId] = useState(null);
@@ -91,8 +91,8 @@ export default function FavoritesPanel({
 
   useEffect(() => {
     if (open && onLoadNoise) onLoadNoise();
-    if (open && onLoadPRs) onLoadPRs();
-  }, [open, onLoadNoise, onLoadPRs]);
+    if (open && onLoadSearchResults) onLoadSearchResults();
+  }, [open, onLoadNoise, onLoadSearchResults]);
 
   const handleConfirmDelete = (threadId) => {
     if (confirmDeleteId === threadId) {
@@ -137,8 +137,8 @@ export default function FavoritesPanel({
   const hasLoose = favoriteLooseEnds.length > 0;
   const hasTeamwork = favoriteTeamworkTasks.length > 0;
   const hasNotifs = favoriteGithubNotifs.length > 0;
-  const hasPRs = (favoritePRs?.length ?? 0) > 0;
-  const isEmpty = !hasLoose && !hasTeamwork && !hasNotifs && !hasPRs;
+  const hasSearchResults = (favoriteSearchResults?.length ?? 0) > 0;
+  const isEmpty = !hasLoose && !hasTeamwork && !hasNotifs && !hasSearchResults;
 
   return (
     <>
@@ -346,22 +346,22 @@ export default function FavoritesPanel({
             </Section>
           )}
 
-          {hasPRs && (
-            <Section title="🔀 GitHub PRs" count={favoritePRs.length}>
+          {hasSearchResults && (
+            <Section title="🔀 GitHub" count={favoriteSearchResults.length}>
               <div style={{ padding: "0 16px" }}>
-                {favoritePRs.map((pr) => (
-                  <PRItem
-                    key={pr.id}
-                    pr={pr}
-                    pinned={ghPinnedIds.has(String(pr.id))}
+                {favoriteSearchResults.map((item) => (
+                  <SearchResultItem
+                    key={item.id}
+                    item={item}
+                    pinned={ghPinnedIds.has(String(item.id))}
                     onTogglePin={onTogglePinGh}
-                    active={ghActiveIds?.has(String(pr.id)) ?? false}
+                    active={ghActiveIds?.has(String(item.id)) ?? false}
                     onToggleActive={onToggleActiveGh}
                     activeColor={activeColor}
-                    expanded={expandedPrId === pr.id}
+                    expanded={expandedPrId === item.id}
                     onToggleExpand={togglePrExpand}
-                    noteText={getGhNote(pr.id)}
-                    onNoteChange={(text) => setGhNote(pr.id, text)}
+                    noteText={getGhNote(item.id)}
+                    onNoteChange={(text) => setGhNote(item.id, text)}
                     thresholds={DEFAULT_AGE_THRESHOLDS.mine}
                   />
                 ))}

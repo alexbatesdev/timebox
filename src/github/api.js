@@ -61,7 +61,7 @@ export const notificationUrl = (notification) => {
     .replace("/commits/", "/commit/");
 };
 
-const mapPR = (item) => ({
+const mapSearchResult = (item) => ({
   id: item.id,
   number: item.number,
   title: item.title,
@@ -72,8 +72,8 @@ const mapPR = (item) => ({
   draft: item.draft,
 });
 
-export const fetchPRsByQuery = async (query) => {
+export const fetchSearchResults = async (query) => {
   const q = encodeURIComponent(query);
   const data = await ghFetch(`/search/issues?q=${q}&per_page=50`);
-  return (data.items || []).map(mapPR);
+  return (data.items || []).map(mapSearchResult);
 };

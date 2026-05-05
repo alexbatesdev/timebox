@@ -3,7 +3,7 @@ import {
   isGitHubConfigured,
   fetchNotifications,
   fetchNoiseNotifications,
-  fetchPRsByQuery,
+  fetchSearchResults,
   markThreadRead,
   markThreadDone,
 } from "../github/api.js";
@@ -13,9 +13,9 @@ import {
   DEFAULT_NOTIFICATION_RULES,
 } from "../github/rules.js";
 import {
-  loadPRSections,
-  DEFAULT_PR_SECTIONS,
-} from "../github/prSections.js";
+  loadPanelSections,
+  DEFAULT_PANEL_SECTIONS,
+} from "../github/panelSections.js";
 import { usePinned } from "./usePinned.js";
 
 const POLL_INTERVAL = 60_000;
@@ -40,7 +40,7 @@ export const useGitHubNotifications = () => {
   const [noiseNotifications, setNoiseNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [rules, setRules] = useState(DEFAULT_NOTIFICATION_RULES);
-  const [prSections, setPrSections] = useState(DEFAULT_PR_SECTIONS);
+  const [panelSections, setPanelSections] = useState(DEFAULT_PANEL_SECTIONS);
   const pollTimeoutRef = useRef(null);
   const dismissedRef = useRef(loadDismissed());
 
@@ -49,8 +49,8 @@ export const useGitHubNotifications = () => {
     loadNotificationRules().then((loaded) => {
       if (!cancelled) setRules(loaded);
     });
-    loadPRSections().then((loaded) => {
-      if (!cancelled) setPrSections(loaded);
+    loadPanelSections().then((loaded) => {
+      if (!cancelled) setPanelSections(loaded);
     });
     return () => {
       cancelled = true;
@@ -153,30 +153,31 @@ export const useGitHubNotifications = () => {
     [reload],
   );
 
-  const [prs, setPrs] = useState({});
+  const [searchResults, setSearchResults] = useState({});
 
-  const loadPRs = useCallback(async () => {
+  const loadSearchResults = useCallback(async () => {
     if (!configured) return;
     try {
+      const searchSections = panelSections.filter((s) => s.type === "search");
       const results = await Promise.all(
-        prSections.map(async (section) => {
+        searchSections.map(async (section) => {
           try {
-            const items = await fetchPRsByQuery(section.query);
+            const items = await fetchSearchResults(section.query);
             return [section.id, items];
           } catch (err) {
             console.error(
-              `GitHub PR fetch failed for section "${section.id}":`,
+              `GitHub search fetch failed for section "${section.id}":`,
               err,
             );
             return [section.id, []];
           }
         }),
       );
-      setPrs(Object.fromEntries(results));
+      setSearchResults(Object.fromEntries(results));
     } catch (err) {
-      console.error("GitHub PR fetch error:", err);
+      console.error("GitHub search fetch error:", err);
     }
-  }, [configured, prSections]);
+  }, [configured, panelSections]);
 
   const loadNoise = useCallback(async () => {
     if (!configured) return;
@@ -226,18 +227,18 @@ export const useGitHubNotifications = () => {
     });
   }, [notifications, noiseNotifications, pinnedIds, rules]);
 
-  const sortedPrs = useMemo(() => {
+  const sortedSearchResults = useMemo(() => {
     const byPinned = (a, b) => {
       const ap = pinnedIds.has(String(a.id)) ? 0 : 1;
       const bp = pinnedIds.has(String(b.id)) ? 0 : 1;
       return ap - bp;
     };
     const out = {};
-    for (const [id, items] of Object.entries(prs)) {
+    for (const [id, items] of Object.entries(searchResults)) {
       out[id] = [...items].sort(byPinned);
     }
     return out;
-  }, [prs, pinnedIds]);
+  }, [searchResults, pinnedIds]);
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => n.unread).length,
@@ -260,8 +261,8 @@ export const useGitHubNotifications = () => {
     activeIds,
     toggleActive,
     loadNoise,
-    prs: sortedPrs,
-    prSections,
-    loadPRs,
+    searchResults: sortedSearchResults,
+    panelSections,
+    loadSearchResults,
   };
 };
