@@ -313,20 +313,21 @@ export default function App() {
   };
 
   /* ── quick meeting ───────────────────────────────────── */
-  const insertQuickMeeting = (duration, label, consumeFrom) => {
+  const insertQuickMeeting = (duration, label, consumeFrom, meetingStart = now) => {
     const ci = getCurIdx();
+    const meetingEnd = meetingStart + duration;
     const meetingId = `mtg_${Date.now()}`;
     setBlocks((prev) => {
       const newBlocks = prev.map((b, i) => {
-        if (i === ci) return { ...b, end: now };
+        if (i === ci) return { ...b, end: meetingStart };
         return { ...b };
       });
 
       newBlocks.splice(ci + 1, 0, {
         id: meetingId,
         label: label || "Meeting",
-        start: now,
-        end: now + duration,
+        start: meetingStart,
+        end: meetingEnd,
         type: "meeting",
       });
 
@@ -334,12 +335,12 @@ export default function App() {
       for (let i = ci + 2; i < newBlocks.length; i++) {
         const b = newBlocks[i];
         if (b.type === "meeting" || b.type === "wrapup") continue;
-        if (b.start < now + duration) {
+        if (b.start < meetingEnd) {
           const dur = b.end - b.start;
           newBlocks[i] = {
             ...b,
-            start: now + duration,
-            end: now + duration + dur,
+            start: meetingEnd,
+            end: meetingEnd + dur,
           };
         }
       }
@@ -366,7 +367,7 @@ export default function App() {
 
   const endQuickMtg = () => {
     const duration = Math.max(1, now - quickMtgStart);
-    insertQuickMeeting(duration, quickMtgLabel, quickMtgConsumeFrom);
+    insertQuickMeeting(duration, quickMtgLabel, quickMtgConsumeFrom, quickMtgStart);
   };
 
   const manualQuickMtg = () => {
