@@ -1,7 +1,16 @@
+import { useState } from "react";
 import { fmtTime } from "../utils/time.js";
 import AutoTextarea from "./AutoTextarea.jsx";
+import PreviousWrapupsModal from "./PreviousWrapupsModal.jsx";
 
-export default function WrapupSection({ wrapup, wrapBlock, onWrapupChange }) {
+export default function WrapupSection({
+  wrapup,
+  wrapBlock,
+  onWrapupChange,
+  loadPreviousWrapups,
+}) {
+  const [showHistory, setShowHistory] = useState(false);
+
   return (
     <div
       style={{
@@ -25,11 +34,32 @@ export default function WrapupSection({ wrapup, wrapBlock, onWrapupChange }) {
         >
           📝 Wrap-up
         </div>
-        {wrapBlock && (
-          <div style={{ fontSize: "12px", color: "#6b7280" }}>
-            {fmtTime(wrapBlock.start)} – {fmtTime(wrapBlock.end)}
-          </div>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          {wrapBlock && (
+            <div style={{ fontSize: "12px", color: "#6b7280" }}>
+              {fmtTime(wrapBlock.start)} – {fmtTime(wrapBlock.end)}
+            </div>
+          )}
+          {loadPreviousWrapups && (
+            <button
+              type="button"
+              onClick={() => setShowHistory(true)}
+              title="View previous wrap-ups"
+              style={{
+                background: "transparent",
+                border: "1px solid #f9731640",
+                color: "#fdba74",
+                borderRadius: "6px",
+                padding: "2px 8px",
+                cursor: "pointer",
+                fontSize: "11px",
+                fontWeight: "600",
+              }}
+            >
+              📚 History
+            </button>
+          )}
+        </div>
       </div>
       {[
         ["left", "Where I left off", "Current state of things..."],
@@ -66,6 +96,13 @@ export default function WrapupSection({ wrapup, wrapBlock, onWrapupChange }) {
           />
         </div>
       ))}
+      {loadPreviousWrapups && (
+        <PreviousWrapupsModal
+          show={showHistory}
+          onClose={() => setShowHistory(false)}
+          loadWrapups={loadPreviousWrapups}
+        />
+      )}
     </div>
   );
 }

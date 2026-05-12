@@ -36,3 +36,24 @@ export const loadPreviousWrapup = (maxDaysBack = 7) => {
     return null;
   }
 };
+
+export const loadPreviousWrapups = (maxDaysBack = 90) => {
+  const entries = [];
+  try {
+    for (let i = 1; i <= maxDaysBack; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateISO = d.toISOString().slice(0, 10);
+      const raw = localStorage.getItem(`timebox-${dateISO}`);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw);
+      const wrapup = parsed?.wrapup;
+      if (wrapup && (wrapup.left || wrapup.next)) {
+        entries.push({ wrapup, dateISO });
+      }
+    }
+  } catch {
+    /* ignore parse errors and return what we have */
+  }
+  return entries;
+};

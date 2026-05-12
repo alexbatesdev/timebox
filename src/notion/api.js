@@ -89,22 +89,24 @@ const queryTodayNotionEntry = async (token) => {
   return data.results?.[0] || null;
 };
 
-const queryPreviousNotionEntry = async (token) => {
+const queryPreviousNotionEntries = async (token, pageSize = 1, startCursor = null) => {
   const dbId = import.meta.env.VITE_NOTION_DATABASE_ID;
-  if (!token || !dbId) return null;
+  if (!token || !dbId) return { results: [], nextCursor: null };
 
   const dateProp = getDateProp();
   const todayISO = new Date().toISOString().slice(0, 10);
+  const body = {
+    filter: {
+      property: dateProp,
+      date: { before: todayISO },
+    },
+    sorts: [{ property: dateProp, direction: "descending" }],
+    page_size: pageSize,
+  };
+  if (startCursor) body.start_cursor = startCursor;
   const res = await notionFetch(`/databases/${dbId}/query`, token, {
     method: "POST",
-    body: JSON.stringify({
-      filter: {
-        property: dateProp,
-        date: { before: todayISO },
-      },
-      sorts: [{ property: dateProp, direction: "descending" }],
-      page_size: 1,
-    }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -112,7 +114,10 @@ const queryPreviousNotionEntry = async (token) => {
   }
 
   const data = await res.json();
-  return data.results?.[0] || null;
+  return {
+    results: data.results || [],
+    nextCursor: data.has_more ? data.next_cursor : null,
+  };
 };
 
 export const loadTodayFromNotion = async (token, format = DEFAULT_TIME_FORMAT) => {
@@ -122,7 +127,8 @@ export const loadTodayFromNotion = async (token, format = DEFAULT_TIME_FORMAT) =
 };
 
 export const loadPreviousWrapupFromNotion = async (token, format = DEFAULT_TIME_FORMAT) => {
-  const page = await queryPreviousNotionEntry(token);
+  const { results } = await queryPreviousNotionEntries(token, 1);
+  const page = results[0];
   if (!page) return null;
   const dateProp = getDateProp();
   const dateISO = page.properties?.[dateProp]?.date?.start || null;
@@ -130,6 +136,31 @@ export const loadPreviousWrapupFromNotion = async (token, format = DEFAULT_TIME_
   const wrapup = snapshot?.wrapup;
   if (!wrapup || (!wrapup.left && !wrapup.next)) return null;
   return { wrapup, dateISO };
+};
+
+export const loadPreviousWrapupsPageFromNotion = async (
+  token,
+  { pageSize = 5, startCursor = null, format = DEFAULT_TIME_FORMAT } = {},
+) => {
+  const { results, nextCursor } = await queryPreviousNotionEntries(
+    token,
+    pageSize,
+    startCursor,
+  );
+  const dateProp = getDateProp();
+  const entries = await Promise.all(
+    results.map(async (page) => {
+      const dateISO = page.properties?.[dateProp]?.date?.start || null;
+      const { snapshot } = await loadSnapshotFromPage(page, token, format);
+      const wrapup = snapshot?.wrapup;
+      if (!wrapup || (!wrapup.left && !wrapup.next)) return null;
+      return { wrapup, dateISO };
+    }),
+  );
+  return {
+    entries: entries.filter(Boolean),
+    nextCursor,
+  };
 };
 
 export const replaceNotionPageContent = async (pageId, token, children) => {

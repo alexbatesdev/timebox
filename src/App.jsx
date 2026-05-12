@@ -1,12 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getWeekdayKey, todayKey } from "./utils/time.js";
-import { clearState, loadPreviousWrapup } from "./utils/storage.js";
+import {
+  clearState,
+  loadPreviousWrapup,
+  loadPreviousWrapups,
+} from "./utils/storage.js";
 import { loadScheduleConfig } from "./data/scheduleConfig.js";
 import { createScheduleState } from "./data/schedules.js";
 import { buildMarkdown } from "./export/markdown.js";
 import {
   loadTodayFromNotion,
   loadPreviousWrapupFromNotion,
+  loadPreviousWrapupsPageFromNotion,
   notionFetch,
   replaceNotionPageContent,
 } from "./notion/api.js";
@@ -170,6 +175,23 @@ export default function App() {
     }
     setConfigStatus("ready");
   }, [clearNotified, showToast]);
+
+  const loadPreviousWrapupsForModal = useCallback(
+    async ({ cursor }) => {
+      const token = import.meta.env.VITE_NOTION_TOKEN;
+      const dbId = import.meta.env.VITE_NOTION_DATABASE_ID;
+      if (token && dbId) {
+        return loadPreviousWrapupsPageFromNotion(token, {
+          pageSize: 3,
+          startCursor: cursor,
+          format: config?.timeFormat,
+        });
+      }
+      if (cursor) return { entries: [], nextCursor: null };
+      return { entries: loadPreviousWrapups(), nextCursor: null };
+    },
+    [config?.timeFormat],
+  );
 
   // Auto-reload when tab becomes visible on a new day
   const loadedDateKey = useRef(todayKey());
@@ -851,6 +873,7 @@ export default function App() {
           wrapup={wrapup}
           wrapBlock={wrapBlock}
           onWrapupChange={handleWrapupChange}
+          loadPreviousWrapups={loadPreviousWrapupsForModal}
         />
 
         <ExportBar
