@@ -126,6 +126,11 @@ export const fetchTask = async (taskId) => {
   if (!t) return null;
   const ws = t.workflowStages?.[0];
   const wfId = ws?.workflowId ? String(ws.workflowId) : null;
+  let stage = null;
+  if (wfId && ws?.stageId) {
+    const stages = await fetchWorkflowStages(wfId);
+    stage = stages.find((s) => String(s.id) === String(ws.stageId)) || null;
+  }
 
   // Resolve project from included data or tasklist
   const includedProjects = data.included?.projects || {};
@@ -135,7 +140,7 @@ export const fetchTask = async (taskId) => {
   const projectId = String(tl?.project?.id || tl?.projectId || "");
   const projectName = includedProjects[projectId]?.name || "";
 
-  return mapTask(t, projectId, projectName, null, wfId);
+  return mapTask(t, projectId, projectName, stage, wfId);
 };
 
 export const moveTaskToStage = async (workflowId, stageId, taskId) => {
