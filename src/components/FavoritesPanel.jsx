@@ -72,7 +72,7 @@ export default function FavoritesPanel({
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [expandedNotifId, setExpandedNotifId] = useState(null);
   const [expandedPrId, setExpandedPrId] = useState(null);
-  const [menuTaskId, setMenuTaskId] = useState(null);
+  const [menuKey, setMenuKey] = useState(null);
   const { getNote: getGhNote, setNote: setGhNote } =
     useNotes("timebox-gh-notes");
   const { getNote: getTwNote, setNote: setTwNote } =
@@ -114,9 +114,10 @@ export default function FavoritesPanel({
   const togglePrExpand = (id) =>
     setExpandedPrId((prev) => (prev === id ? null : id));
 
+  const menuTaskId = menuKey ? menuKey.split("/").pop() : null;
   const findTask = (list) => {
     for (const t of list) {
-      if (t.id === menuTaskId) return t;
+      if (String(t.id) === String(menuTaskId)) return t;
       if (t.subtasks?.length) {
         const f = findTask(t.subtasks);
         if (f) return f;
@@ -129,8 +130,8 @@ export default function FavoritesPanel({
     ? workflowData?.[menuTask.workflowId]?.stages || []
     : [];
 
-  const handleBadgeClick = (task) => {
-    setMenuTaskId(task.id);
+  const handleBadgeClick = (task, instanceKey) => {
+    setMenuKey(instanceKey);
     onLoadWorkflowStages(task.workflowId);
   };
 
@@ -285,9 +286,9 @@ export default function FavoritesPanel({
 
           {hasTeamwork && (
             <Section title="✅ Teamwork" count={favoriteTeamworkTasks.length}>
-              {menuTaskId && (
+              {menuKey && (
                 <div
-                  onClick={() => setMenuTaskId(null)}
+                  onClick={() => setMenuKey(null)}
                   style={{ position: "fixed", inset: 0, zIndex: 99 }}
                 />
               )}
@@ -300,11 +301,11 @@ export default function FavoritesPanel({
                     descExpandedKeys={twDescExpandedKeys}
                     onToggleExpanded={toggleTwExpanded}
                     onToggleDescExpanded={toggleTwDescExpanded}
-                    menuTaskId={menuTaskId}
+                    menuKey={menuKey}
                     onBadgeClick={handleBadgeClick}
                     stages={twStages}
                     onSelectStage={onChangeStage}
-                    onCloseMenu={() => setMenuTaskId(null)}
+                    onCloseMenu={() => setMenuKey(null)}
                     pinnedIds={twPinnedIds}
                     onTogglePin={onTogglePinTask}
                     activeIds={twActiveIds}

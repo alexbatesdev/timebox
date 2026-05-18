@@ -202,7 +202,8 @@ function TaskRow({
   expanded,
   onToggle,
   fontSize = "12px",
-  menuTaskId,
+  instanceKey,
+  menuKey,
   onBadgeClick,
   stages,
   onSelectStage,
@@ -268,7 +269,7 @@ function TaskRow({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onBadgeClick(task);
+              onBadgeClick(task, instanceKey);
             }}
             style={{
               fontSize: "9px",
@@ -286,7 +287,7 @@ function TaskRow({
           >
             {task.stage?.name || "—"}
           </button>
-          {menuTaskId === task.id && (
+          {menuKey === instanceKey && (
             <StageMenu
               task={task}
               stages={stages}
@@ -323,7 +324,7 @@ export function TaskNode({
   descExpandedKeys,
   onToggleExpanded,
   onToggleDescExpanded,
-  menuTaskId,
+  menuKey,
   onBadgeClick,
   stages,
   onSelectStage,
@@ -351,7 +352,8 @@ export function TaskNode({
         task={task}
         expanded={expanded}
         onToggle={() => onToggleExpanded(instanceKey, task.id)}
-        menuTaskId={menuTaskId}
+        instanceKey={instanceKey}
+        menuKey={menuKey}
         onBadgeClick={onBadgeClick}
         stages={stages}
         onSelectStage={onSelectStage}
@@ -421,7 +423,7 @@ export function TaskNode({
               descExpandedKeys={descExpandedKeys}
               onToggleExpanded={onToggleExpanded}
               onToggleDescExpanded={onToggleDescExpanded}
-              menuTaskId={menuTaskId}
+              menuKey={menuKey}
               onBadgeClick={onBadgeClick}
               stages={stages}
               onSelectStage={onSelectStage}
@@ -461,16 +463,17 @@ export default function TeamworkPanel({
   panelLeft = 30,
 }) {
   const { getNote, setNote } = useNotes("timebox-tw-notes");
-  const [menuTaskId, setMenuTaskId] = useState(null);
+  const [menuKey, setMenuKey] = useState(null);
   const {
     expandedKeys,
     descExpandedKeys,
     toggleExpanded,
     toggleDescExpanded,
   } = useTeamworkExpand(onLoadSubtasksIfNeeded);
+  const menuTaskId = menuKey ? menuKey.split("/").pop() : null;
   const findTask = (list) => {
     for (const t of list) {
-      if (t.id === menuTaskId) return t;
+      if (String(t.id) === String(menuTaskId)) return t;
       if (t.subtasks?.length) {
         const f = findTask(t.subtasks);
         if (f) return f;
@@ -483,8 +486,8 @@ export default function TeamworkPanel({
     ? workflowData[menuTask.workflowId]?.stages || []
     : [];
 
-  const handleBadgeClick = (task) => {
-    setMenuTaskId(task.id);
+  const handleBadgeClick = (task, instanceKey) => {
+    setMenuKey(instanceKey);
     onLoadWorkflowStages(task.workflowId);
   };
 
@@ -635,9 +638,9 @@ export default function TeamworkPanel({
               No tasks
             </div>
           )}
-          {menuTaskId && (
+          {menuKey && (
             <div
-              onClick={() => setMenuTaskId(null)}
+              onClick={() => setMenuKey(null)}
               style={{ position: "fixed", inset: 0, zIndex: 99 }}
             />
           )}
@@ -650,11 +653,11 @@ export default function TeamworkPanel({
                 descExpandedKeys={descExpandedKeys}
                 onToggleExpanded={toggleExpanded}
                 onToggleDescExpanded={toggleDescExpanded}
-                menuTaskId={menuTaskId}
+                menuKey={menuKey}
                 onBadgeClick={handleBadgeClick}
                 stages={stages}
                 onSelectStage={onChangeStage}
-                onCloseMenu={() => setMenuTaskId(null)}
+                onCloseMenu={() => setMenuKey(null)}
                 pinnedIds={pinnedIds}
                 onTogglePin={onTogglePin}
                 activeIds={activeIds}
