@@ -2,12 +2,12 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   isGitHubConfigured,
   fetchNotifications,
-  fetchNoiseNotifications,
+  fetchSecondaryNotifications,
   fetchSearchResults,
   markThreadRead,
   markThreadDone,
 } from "../github/api.js";
-import { classifyTier } from "../github/rules.js";
+import { classifyTier, getSecondaryReasons } from "../github/rules.js";
 import {
   loadPanelSections,
   collectSearchSections,
@@ -35,7 +35,7 @@ export const useGitHubNotifications = () => {
     "timebox-gh-active",
   );
   const [notifications, setNotifications] = useState([]);
-  const [noiseNotifications, setNoiseNotifications] = useState([]);
+  const [secondaryNotifications, setSecondaryNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [panelSections, setPanelSections] = useState(DEFAULT_PANEL_SECTIONS);
   const pollTimeoutRef = useRef(null);
@@ -93,7 +93,7 @@ export const useGitHubNotifications = () => {
     async (threadId) => {
       const mark = (n) => (n.id === threadId ? { ...n, unread: false } : n);
       setNotifications((prev) => prev.map(mark));
-      setNoiseNotifications((prev) => prev.map(mark));
+      setSecondaryNotifications((prev) => prev.map(mark));
       try {
         await markThreadRead(threadId);
       } catch {
@@ -123,7 +123,7 @@ export const useGitHubNotifications = () => {
       const markUnread = (n) =>
         idSet.has(String(n.id)) ? { ...n, unread: false } : n;
       setNotifications((prev) => prev.map(markUnread));
-      setNoiseNotifications((prev) => prev.map(markUnread));
+      setSecondaryNotifications((prev) => prev.map(markUnread));
       try {
         await Promise.all(threadIds.map(markThreadRead));
       } catch {
@@ -139,7 +139,7 @@ export const useGitHubNotifications = () => {
       idSet.forEach((id) => dismissedRef.current.add(id));
       saveDismissed(dismissedRef.current);
       setNotifications((prev) => prev.filter((n) => !idSet.has(n.id)));
-      setNoiseNotifications((prev) => prev.filter((n) => !idSet.has(n.id)));
+      setSecondaryNotifications((prev) => prev.filter((n) => !idSet.has(n.id)));
       try {
         await Promise.all(threadIds.map(markThreadDone));
       } catch {
@@ -175,36 +175,32 @@ export const useGitHubNotifications = () => {
     }
   }, [configured, panelSections]);
 
-  const loadNoise = useCallback(async () => {
+  const secondaryReasons = useMemo(() => getSecondaryReasons(rules), [rules]);
+
+  const loadSecondary = useCallback(async () => {
     if (!configured) return;
     try {
-      const data = await fetchNoiseNotifications(rules.noiseFilter);
-      setNoiseNotifications(
+      const data = await fetchSecondaryNotifications(secondaryReasons);
+      setSecondaryNotifications(
         data.filter((n) => !dismissedRef.current.has(n.id)),
       );
     } catch (err) {
-      console.error("GitHub noise fetch error:", err);
+      console.error("GitHub secondary fetch error:", err);
     }
-  }, [configured, rules.noiseFilter]);
+  }, [configured, secondaryReasons]);
 
   const grouped = useMemo(() => {
     const buckets = new Map(rules.categories.map((c) => [c.id, []]));
     const seenIds = new Set();
-    for (const n of notifications) {
+    const place = (n) => {
+      if (seenIds.has(n.id)) return;
       seenIds.add(n.id);
       const tierId = classifyTier(n.reason, rules);
       const bucket = buckets.get(tierId);
       if (bucket) bucket.push(n);
-    }
-    const fallbackCategory = rules.categories.find((c) => c.fallback);
-    const fallbackBucket = fallbackCategory
-      ? buckets.get(fallbackCategory.id)
-      : null;
-    if (fallbackBucket) {
-      for (const n of noiseNotifications) {
-        if (!seenIds.has(n.id)) fallbackBucket.push(n);
-      }
-    }
+    };
+    for (const n of notifications) place(n);
+    for (const n of secondaryNotifications) place(n);
     const byPinnedThenRecent = (a, b) => {
       const ap = pinnedIds.has(String(a.id)) ? 0 : 1;
       const bp = pinnedIds.has(String(b.id)) ? 0 : 1;
@@ -221,7 +217,7 @@ export const useGitHubNotifications = () => {
         items,
       };
     });
-  }, [notifications, noiseNotifications, pinnedIds, rules]);
+  }, [notifications, secondaryNotifications, pinnedIds, rules]);
 
   const sortedSearchResults = useMemo(() => {
     const byPinned = (a, b) => {
@@ -256,7 +252,7 @@ export const useGitHubNotifications = () => {
     togglePin,
     activeIds,
     toggleActive,
-    loadNoise,
+    loadSecondary,
     searchResults: sortedSearchResults,
     panelSections,
     loadSearchResults,

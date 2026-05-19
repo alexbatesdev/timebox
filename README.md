@@ -38,7 +38,7 @@ Everything Vite reads at runtime is listed and documented in [`.env.example`](/U
 | `VITE_NOTION_LOOSE_ENDS_TITLE_PROP`   | No        | Override title property on the loose-ends DB (default `Name`).                           |
 | `VITE_NOTION_LOOSE_ENDS_DONE_PROP`    | No        | Override checkbox property on the loose-ends DB (default `Done`).                        |
 | `VITE_NOTION_CUSTOM_EMOJI_ID`         | No        | Custom emoji ID for work-callout icons in Notion blocks. Falls back to 💻 when unset.    |
-| `VITE_GITHUB_TOKEN`                   | No        | Personal access token with the `notifications` scope. Enables the GitHub panel.          |
+| `VITE_GITHUB_TOKEN`                   | No        | GitHub access token. **Classic PAT** required if you want the notifications section (the `/notifications` API doesn't support fine-grained tokens). Fine-grained tokens work for the PR/issue search sections only. See [GitHub token setup](#github-token-setup). |
 | `VITE_TEAMWORK_SITE`                  | No        | Teamwork subdomain (e.g. `acme` for `acme.teamwork.com`). Required to enable Teamwork.   |
 | `VITE_TEAMWORK_API_KEY`               | No        | Teamwork API key (Profile → API & Mobile → API Tokens). Required with `VITE_TEAMWORK_SITE`. |
 
@@ -128,13 +128,50 @@ Example:
 
 If `timeFormat` is omitted or unknown, it falls back to `lazyOpinionated`. The format applies to both reads (parsing config strings, parsing legacy Notion block titles) and writes (Notion block titles, markdown exports), so changing it requires either rewriting your config strings or letting the app re-emit them on the next Notion send.
 
+### GitHub token setup
+
+The GitHub panel needs an access token in `VITE_GITHUB_TOKEN`. Token-type choice is constrained by a frustrating GitHub limitation:
+
+> The `/notifications` REST endpoint **only supports classic personal access tokens**. Fine-grained PATs have no permission that grants access to notifications.
+
+That means if you want the **notifications** section to work, you need a classic PAT — and every org whose notifications you want must allow classic PATs (and have you SSO-authorize the token, if it uses SAML).
+
+**Classic PAT (required for notifications):**
+1. https://github.com/settings/tokens → **Generate new token (classic)**.
+2. Scopes: `notifications` and `repo`.
+3. Generate, copy (starts with `ghp_`), paste into `.env` as `VITE_GITHUB_TOKEN`.
+4. If any of your orgs use SAML SSO, on the token list page click **Configure SSO** next to your token and authorize each org.
+5. If an org has *disabled* classic PATs entirely (you'll see `"<org> forbids access via a personal access token (classic)..."` from any repo call), you can't fix this token-side — an org admin would have to re-enable classic PATs, or you'd have to skip the notifications panel for that org's content.
+
+**Fine-grained PAT (PR/issue search only — notifications won't work):**
+
+If the notifications panel isn't important to you and you only want the PR/issue search sections to work, a fine-grained PAT is fine:
+1. https://github.com/settings/personal-access-tokens → **Generate new token**.
+2. **Resource owner**: your account *and* every org whose repos you want.
+3. **Repository access**: "All repositories" (simplest).
+4. **Repository permissions**: Contents, Issues, Pull requests, Metadata — all Read-only.
+5. The notifications section will stay empty (the API returns `[]`); the PR search sections will work normally.
+
+**Sanity check** — replace `$TOKEN`:
+
+```bash
+# Token & scopes
+curl -sI -H "Authorization: Bearer $TOKEN" https://api.github.com/user | grep -i '^x-oauth-scopes'
+
+# Notifications (classic PAT only)
+curl -s -H "Authorization: Bearer $TOKEN" "https://api.github.com/notifications?all=true&per_page=1" | head -20
+
+# Org repo visibility — if this returns "forbids access via a personal access token (classic)", the org has disabled classic PATs
+curl -s -H "Authorization: Bearer $TOKEN" "https://api.github.com/repos/<org>/<repo>" | grep '"message"'
+```
+
 ### GitHub Panel Sections
 
 The full GitHub panel layout is configurable via [`public/github-panel-sections.json`](/Users/alex.bates/Code/timebox/public/github-panel-sections.json). Each entry is a top-level section in the panel; entries are rendered in the order they appear in the array.
 
 Each entry has a `type` discriminator:
 
-- `"type": "notifications"` — the Notifications section. Optional `settings` object configures the notification categories and noise filter (schema below). Only one notifications slot is allowed anywhere in the tree.
+- `"type": "notifications"` — the Notifications section. Optional `settings` object configures the notification categories (schema below). Only one notifications slot is allowed anywhere in the tree.
 - `"type": "search"` — a search-driven section, fetched via the GitHub Search API (`/search/issues`, which serves both Issues *and* PRs). Same query syntax you'd type into github.com.
 - `"type": "group"` — a collapsible wrapper containing other sections. Has its own `id`, `title`, optional `defaultExpanded`, and a recursive `sections` array. Sections inside a group render with smaller, nested-style headers. Groups can contain other groups.
 
@@ -147,11 +184,10 @@ Schema (default config — Notifications at top, two PR search sections grouped 
       "type": "notifications",
       "settings": {
         "categories": [
-          { "id": "newStuff", "label": "New Stuff", "reasons": ["review_requested", "assign"], "defaultExpanded": true },
-          { "id": "updates",  "label": "Updates",   "reasons": ["mention", "team_mention", "comment", "author", "state_change"], "defaultExpanded": true },
-          { "id": "noise",    "label": "Noise",     "fallback": true, "defaultExpanded": false }
-        ],
-        "noiseFilter": ["ci_activity"]
+          { "id": "newStuff", "label": "New Stuff", "reasons": ["review_requested", "assign"], "frequent": true, "defaultExpanded": true },
+          { "id": "updates",  "label": "Updates",   "reasons": ["mention", "team_mention", "comment", "author", "state_change"], "frequent": true, "defaultExpanded": true },
+          { "id": "noise",    "label": "Noise",     "fallback": true, "frequent": false, "defaultExpanded": false }
+        ]
       }
     },
     {
@@ -225,9 +261,8 @@ For `"type": "search"` entries:
 
 For the `"type": "notifications"` entry's optional `settings` object:
 
-- `categories` — array defining how unread/read notifications are bucketed for display. Each category has `id` (unique string), `label` (header text), and either `reasons` (array of GitHub notification reason strings — `mention`, `review_requested`, `assign`, `team_mention`, `comment`, `author`, `state_change`, etc.) or `fallback: true` (catch-all for anything not matched by an earlier category). Optional `defaultExpanded` (default `true`). Exactly one category must be `fallback: true`.
-- `noiseFilter` — array of reason strings fetched in addition to the default participating-only feed and routed into the fallback category (e.g. `"ci_activity"`).
-- If `settings` is omitted, defaults are used (New Stuff / Updates / Noise + `ci_activity` noise filter).
+- `categories` — array defining how unread/read notifications are bucketed for display. Each category has `id` (unique string), `label` (header text), and either `reasons` (array of GitHub notification reason strings — `mention`, `review_requested`, `assign`, `team_mention`, `comment`, `author`, `state_change`, `subscribed`, `ci_activity`, etc.) or `fallback: true` (catch-all for anything not matched by an earlier category). Optional `frequent` (default `true` for non-fallback, `false` for fallback) controls whether the category's reasons are pulled by the polled participating-only fetch (`true`) or by the heavier, paginated on-open fetch that includes non-participating notifications like `subscribed` (`false`). Optional `defaultExpanded` (default `true`). Exactly one category must be `fallback: true`.
+- If `settings` is omitted, defaults are used (New Stuff / Updates / Noise).
 
 For `"type": "group"` entries:
 

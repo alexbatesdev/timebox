@@ -4,22 +4,24 @@ export const DEFAULT_NOTIFICATION_RULES = {
       id: "newStuff",
       label: "New Stuff",
       reasons: ["review_requested", "assign"],
+      frequent: true,
       defaultExpanded: true,
     },
     {
       id: "updates",
       label: "Updates",
       reasons: ["mention", "team_mention", "comment", "author", "state_change"],
+      frequent: true,
       defaultExpanded: true,
     },
     {
       id: "noise",
       label: "Noise",
       fallback: true,
+      frequent: false,
       defaultExpanded: false,
     },
   ],
-  noiseFilter: ["ci_activity"],
 };
 
 export const validateNotificationRules = (data) => {
@@ -40,9 +42,9 @@ export const validateNotificationRules = (data) => {
     if (!c.fallback && !Array.isArray(c.reasons)) {
       return `category "${c.id}" needs a reasons array (or fallback: true)`;
     }
-  }
-  if (!Array.isArray(data.noiseFilter)) {
-    return "noiseFilter must be an array";
+    if (c.frequent !== undefined && typeof c.frequent !== "boolean") {
+      return `category "${c.id}" frequent must be a boolean`;
+    }
   }
   return null;
 };
@@ -53,10 +55,19 @@ export const normalizeNotificationRules = (data) => ({
     label: c.label,
     reasons: c.reasons || [],
     fallback: !!c.fallback,
+    frequent: c.frequent !== undefined ? !!c.frequent : !c.fallback,
     defaultExpanded: c.defaultExpanded !== false,
   })),
-  noiseFilter: data.noiseFilter,
 });
+
+export const getSecondaryReasons = (rules) => {
+  const out = new Set();
+  for (const c of rules.categories) {
+    if (c.fallback || c.frequent) continue;
+    for (const r of c.reasons) out.add(r);
+  }
+  return [...out];
+};
 
 export const classifyTier = (reason, rules) => {
   for (const c of rules.categories) {

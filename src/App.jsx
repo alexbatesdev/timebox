@@ -768,7 +768,7 @@ export default function App() {
               activeIds={github.activeIds}
               onToggleActive={github.toggleActive}
               activeColor={config?.activeColor}
-              onLoadNoise={github.loadNoise}
+              onLoadSecondary={github.loadSecondary}
               searchResults={github.searchResults}
               panelSections={github.panelSections}
               onLoadSearchResults={github.loadSearchResults}

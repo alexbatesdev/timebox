@@ -15,8 +15,9 @@ export const fetchNotifications = async () => {
   return Array.isArray(data) ? data : [];
 };
 
-export const fetchNoiseNotifications = async (noiseReasons) => {
-  const reasonSet = new Set(noiseReasons);
+export const fetchSecondaryNotifications = async (reasons) => {
+  const reasonSet = new Set(reasons);
+  if (reasonSet.size === 0) return [];
   const since = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString();
   let all = [];
   let page = 1;

@@ -780,7 +780,7 @@ export default function GitHubPanel({
   activeIds,
   onToggleActive,
   activeColor,
-  onLoadNoise,
+  onLoadSecondary,
   searchResults,
   panelSections,
   onLoadSearchResults,
@@ -816,10 +816,10 @@ export default function GitHubPanel({
 
   useEffect(() => {
     if (open) {
-      onLoadNoise();
+      onLoadSecondary();
       onLoadSearchResults();
     }
-  }, [open, onLoadNoise, onLoadSearchResults]);
+  }, [open, onLoadSecondary, onLoadSearchResults]);
 
   const handleConfirmDelete = (threadId) => {
     if (confirmDeleteId === threadId) {
