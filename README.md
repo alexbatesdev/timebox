@@ -1,30 +1,65 @@
 # Timebox
 
-Personal daily scheduler built with React and Vite.
+Personal daily scheduler built with React and Vite. The main view is a configurable timeboxed daily schedule synced to a Notion database. Optional side panels integrate with GitHub (notifications + saved searches), Teamwork (your assigned tasks), a Notion "loose ends" database, and a Favorites panel that surfaces pinned items across the other panels.
+
+## Prerequisites
+
+- **Node.js ≥ 20.19** (or ≥ 22.12). Vite 8 will refuse to start on older versions.
+- **npm** (ships with Node).
+- A **Notion** account with at least one database — required to run the app.
 
 ## Setup
 
 1. Install dependencies: `npm install`
 2. Copy the env template: `cp .env.example .env`
-3. Fill in `.env` — at minimum you need a Notion token, the main database ID, and a parent page ID. See `.env.example` for what each var does and which are optional.
+3. Fill in `.env` — at minimum you need a Notion token, the main database ID, and a parent page ID. See `.env.example` for what each var does and which are optional. The full list of supported env vars is summarized in [Environment variables](#environment-variables) below.
 4. In Notion, share the integration with the database and parent page (Share → Connections → add your integration).
 5. Confirm your main database has these properties:
    - A **title** property (default name: `Name`)
    - A **date** property (default name: `date`)
    - If your DB uses different names, set `VITE_NOTION_TITLE_PROP` / `VITE_NOTION_DATE_PROP` in `.env`.
-6. (Optional) For the loose ends panel, create a second database with a title property (default `Name`) and a checkbox (default `Done`), then set `VITE_NOTION_LOOSE_ENDS_DB`. Override the property names with `VITE_NOTION_LOOSE_ENDS_TITLE_PROP` / `VITE_NOTION_LOOSE_ENDS_DONE_PROP` if your DB uses different ones.
-7. (Optional) Add `VITE_GITHUB_TOKEN` for the notifications panel and `VITE_TEAMWORK_*` for Teamwork integration. To customize how notifications are categorized (the default sections are New Stuff / Updates / Noise), edit the `settings` object on the notifications section in [`public/github-panel-sections.json`](/Users/alex.bates/Code/timebox/public/github-panel-sections.json).
-8. Run `npm run dev`.
+6. (Optional) For the loose ends panel, create a second database with a title property (default `Name`) and a checkbox (default `Done`), then set `VITE_NOTION_LOOSE_ENDS_DB`. Override the property names with `VITE_NOTION_LOOSE_ENDS_TITLE_PROP` / `VITE_NOTION_LOOSE_ENDS_DONE_PROP` if your DB uses different ones. See [Loose Ends panel](#loose-ends-panel).
+7. (Optional) Add `VITE_GITHUB_TOKEN` for the notifications panel and `VITE_TEAMWORK_*` for the Teamwork panel. See [GitHub panel](#github-panel-sections) and [Teamwork panel](#teamwork-panel) for setup details.
+8. (Optional) Tweak [`public/schedule-config.json`](/Users/alex.bates/Code/timebox/public/schedule-config.json) to match your own workday — block names, hours, weekday-to-schedule mapping, time format, and active highlight color. See [Schedule Selection](#schedule-selection).
+9. Run `npm run dev`.
+
+## Environment variables
+
+Everything Vite reads at runtime is listed and documented in [`.env.example`](/Users/alex.bates/Code/timebox/.env.example). Quick reference:
+
+| Variable                              | Required? | Purpose                                                                                  |
+| ------------------------------------- | --------- | ---------------------------------------------------------------------------------------- |
+| `VITE_NOTION_TOKEN`                   | Yes       | Notion internal integration token.                                                       |
+| `VITE_NOTION_DATABASE_ID`             | Yes       | ID of the main timebox database.                                                         |
+| `VITE_NOTION_PARENT_PAGE`             | Yes       | Page under which new daily entries are created.                                          |
+| `VITE_NOTION_TITLE_PROP`              | No        | Override title property name on main DB (default `Name`).                                |
+| `VITE_NOTION_DATE_PROP`               | No        | Override date property name on main DB (default `date`).                                 |
+| `VITE_NOTION_LOOSE_ENDS_DB`           | No        | Enables the Loose Ends panel; ID of a second Notion DB.                                  |
+| `VITE_NOTION_LOOSE_ENDS_TITLE_PROP`   | No        | Override title property on the loose-ends DB (default `Name`).                           |
+| `VITE_NOTION_LOOSE_ENDS_DONE_PROP`    | No        | Override checkbox property on the loose-ends DB (default `Done`).                        |
+| `VITE_NOTION_CUSTOM_EMOJI_ID`         | No        | Custom emoji ID for work-callout icons in Notion blocks. Falls back to 💻 when unset.    |
+| `VITE_GITHUB_TOKEN`                   | No        | Personal access token with the `notifications` scope. Enables the GitHub panel.          |
+| `VITE_TEAMWORK_SITE`                  | No        | Teamwork subdomain (e.g. `acme` for `acme.teamwork.com`). Required to enable Teamwork.   |
+| `VITE_TEAMWORK_API_KEY`               | No        | Teamwork API key (Profile → API & Mobile → API Tokens). Required with `VITE_TEAMWORK_SITE`. |
 
 ## Schedule Selection
 
-The app chooses the schedule type automatically from [public/schedule-config.json](/Users/alex.bates/Code/timebox/public/schedule-config.json).
+The full schedule layout — which schedule plays on which weekday, the blocks each schedule contains, time-format parsing, and the active-highlight color — lives in [public/schedule-config.json](/Users/alex.bates/Code/timebox/public/schedule-config.json). Top-level keys:
 
-Example:
+| Key            | Type    | Purpose                                                                                                                |
+| -------------- | ------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `defaultType`  | string  | Schedule key used if `days` is missing or invalid for today.                                                            |
+| `days`         | object  | Map of `monday`…`sunday` → schedule key.                                                                                |
+| `schedules`    | object  | Map of schedule key → schedule definition (see below).                                                                  |
+| `timeFormat`   | string  | How time strings in this file (and Notion) are parsed/written. See [Time Format](#time-format). Default `lazyOpinionated`. |
+| `activeColor`  | string  | Hex color used for the "active item" highlight across panels. Default `#22d3ee`.                                        |
+
+`defaultType` and `days` values must be keys present in `schedules`. If a day is omitted or invalid, the app falls back to `defaultType`. Out of the box the file defines two schedules — `standup` and `noStandup` — but you can rename them, add more, or replace them entirely.
 
 ```json
 {
   "defaultType": "noStandup",
+  "activeColor": "#22d3ee",
   "days": {
     "monday": "standup",
     "tuesday": "noStandup",
@@ -33,11 +68,38 @@ Example:
     "friday": "standup",
     "saturday": "noStandup",
     "sunday": "noStandup"
-  }
+  },
+  "schedules": { "...": "see below" }
 }
 ```
 
-Allowed values are `standup` and `noStandup`. If a day is omitted or invalid, the app falls back to `defaultType`.
+### Schedule definitions
+
+Each entry under `schedules` is a named schedule:
+
+```json
+"standup": {
+  "label": "M-day",
+  "emoji": "🟣",
+  "blocks": [
+    { "id": "plan",  "label": "Plan the day", "start": "9:00",  "end": "9:30",  "type": "work" },
+    { "id": "sdup",  "label": "Standup",      "start": "9:30",  "end": "10:00", "type": "meeting" },
+    { "id": "A",     "label": "Block A",      "start": "10:00", "end": "11:00", "type": "work" },
+    { "id": "lunch", "label": "Lunch",        "start": "12:45", "end": "1:15",  "type": "break" },
+    { "id": "D",     "label": "Block D — Flex", "start": "3:00", "end": "4:45", "type": "flex-work" },
+    { "id": "wrap",  "label": "Wrap up",      "start": "4:45",  "end": "5:00",  "type": "wrapup" }
+  ]
+}
+```
+
+Block fields:
+
+- `id` — unique string within the schedule. Stable across edits; the app uses it to track which block a task belongs to.
+- `label` — header text shown in the UI and written into Notion.
+- `start` / `end` — time strings parsed using `timeFormat` (see below).
+- `type` — one of `work`, `flex-work`, `break`, `meeting`, `wrapup`. Unknown values fall back to `work`. The type drives icon/styling and (for `wrapup`) special end-of-day behavior.
+
+`label` and `emoji` on the schedule itself are displayed in the header.
 
 ### Time Format
 
@@ -178,9 +240,33 @@ For `"type": "group"` entries:
 
 If the file is missing or invalid (unknown `type`, duplicate `id`, multiple `notifications` slots, malformed thresholds, etc.), the app falls back to a built-in default with Notifications first and a "PRs" group containing "Awaiting My Review" and "My Open PRs".
 
-### "Active" highlight color
+## Teamwork panel
 
-`activeColor` (string, hex like `"#22d3ee"`) sets the highlight color used for items marked **active** across Teamwork tasks, Loose Ends, and GitHub items — a separate toggle from pinning, intended for the items you're working on right now. Defaults to `"#22d3ee"` (cyan). Active wins over pinned for both title-text color and (where applicable) disclosure-caret tint when both apply.
+Enabled by setting both `VITE_TEAMWORK_SITE` and `VITE_TEAMWORK_API_KEY` in `.env`.
+
+- `VITE_TEAMWORK_SITE` is the subdomain only (e.g. `acme` for `https://acme.teamwork.com`).
+- `VITE_TEAMWORK_API_KEY` is generated from your Teamwork profile: avatar → **Edit My Details** → **API & Mobile** → **Create API Token**. Use a personal token, not an OAuth client.
+
+The panel lists your incomplete assigned tasks grouped by project, with workflow-stage badges, expandable subtasks, and inline descriptions. Tasks can be pinned (appear in Favorites) or marked active (highlighted using `activeColor`). Stage moves are supported via the stage badge dropdown.
+
+Requests are proxied through Vite at `/api/teamwork` (see `vite.config.js`), which injects the basic-auth header for you so the token is never sent from the browser.
+
+## Loose Ends panel
+
+Enabled by setting `VITE_NOTION_LOOSE_ENDS_DB` to the ID of a second Notion database with:
+
+- a **title** property (default `Name`, override with `VITE_NOTION_LOOSE_ENDS_TITLE_PROP`)
+- a **checkbox** property (default `Done`, override with `VITE_NOTION_LOOSE_ENDS_DONE_PROP`)
+
+Make sure the integration is shared with this database too (Share → Connections). The panel surfaces open loose-end entries, lets you add new ones inline, mark them done (toggles the checkbox in Notion), pin them, or mark them active.
+
+## Favorites panel
+
+Always available. Aggregates everything you've pinned across the Teamwork, Loose Ends, and GitHub panels — including pinned GitHub search results — in one stack. No configuration required; pin items in their source panels and they show up here.
+
+## "Active" highlight color
+
+`activeColor` lives in [`public/schedule-config.json`](/Users/alex.bates/Code/timebox/public/schedule-config.json) (string, hex like `"#22d3ee"`). It sets the highlight color used for items marked **active** across Teamwork tasks, Loose Ends, and GitHub items — a separate toggle from pinning, intended for the items you're working on right now. Defaults to `"#22d3ee"` (cyan). Active wins over pinned for both title-text color and (where applicable) disclosure-caret tint when both apply.
 
 ## Commands
 
