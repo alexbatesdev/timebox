@@ -52,19 +52,20 @@ export const useGitHubNotifications = () => {
   }, []);
 
   const rules = useMemo(() => getNotificationRules(panelSections), [panelSections]);
+  const notificationsEnabled = rules !== null;
 
   const doFetch = useCallback(async () => {
-    if (!configured) return;
+    if (!configured || !notificationsEnabled) return;
     const data = await fetchNotifications();
     setNotifications(data.filter((n) => !dismissedRef.current.has(n.id)));
-  }, [configured]);
+  }, [configured, notificationsEnabled]);
 
   const reload = useCallback(async () => {
-    if (!configured) return;
+    if (!configured || !notificationsEnabled) return;
     setLoading(true);
     await doFetch();
     setLoading(false);
-  }, [configured, doFetch]);
+  }, [configured, notificationsEnabled, doFetch]);
 
   // Initial load
   useEffect(() => {
@@ -74,7 +75,7 @@ export const useGitHubNotifications = () => {
 
   // Polling with recursive setTimeout
   useEffect(() => {
-    if (!configured) return;
+    if (!configured || !notificationsEnabled) return;
     const schedulePoll = () => {
       pollTimeoutRef.current = setTimeout(async () => {
         try {
@@ -87,7 +88,7 @@ export const useGitHubNotifications = () => {
     };
     schedulePoll();
     return () => clearTimeout(pollTimeoutRef.current);
-  }, [configured, doFetch]);
+  }, [configured, notificationsEnabled, doFetch]);
 
   const markRead = useCallback(
     async (threadId) => {
@@ -175,10 +176,13 @@ export const useGitHubNotifications = () => {
     }
   }, [configured, panelSections]);
 
-  const secondaryReasons = useMemo(() => getSecondaryReasons(rules), [rules]);
+  const secondaryReasons = useMemo(
+    () => (rules ? getSecondaryReasons(rules) : []),
+    [rules],
+  );
 
   const loadSecondary = useCallback(async () => {
-    if (!configured) return;
+    if (!configured || !notificationsEnabled) return;
     try {
       const data = await fetchSecondaryNotifications(secondaryReasons);
       setSecondaryNotifications(
@@ -187,9 +191,10 @@ export const useGitHubNotifications = () => {
     } catch (err) {
       console.error("GitHub secondary fetch error:", err);
     }
-  }, [configured, secondaryReasons]);
+  }, [configured, notificationsEnabled, secondaryReasons]);
 
   const grouped = useMemo(() => {
+    if (!rules) return [];
     const buckets = new Map(rules.categories.map((c) => [c.id, []]));
     const seenIds = new Set();
     const place = (n) => {

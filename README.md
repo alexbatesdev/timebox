@@ -44,7 +44,7 @@ Everything Vite reads at runtime is listed and documented in [`.env.example`](/U
 
 ## Schedule Selection
 
-The full schedule layout — which schedule plays on which weekday, the blocks each schedule contains, time-format parsing, and the active-highlight color — lives in [public/schedule-config.json](/Users/alex.bates/Code/timebox/public/schedule-config.json). Top-level keys:
+The full schedule layout — which schedule plays on which weekday, the blocks each schedule contains, time-format parsing, and the active-highlight color — lives in [public/schedule-config.json](/Users/alex.bates/Code/timebox/public/schedule-config.json). A kitchen-sink reference covering every supported field (extra schedules, `timeFormat`, `activeColor`) lives next to it as [public/schedule-config.example.json](/Users/alex.bates/Code/timebox/public/schedule-config.example.json). Top-level keys:
 
 | Key            | Type    | Purpose                                                                                                                |
 | -------------- | ------- | ---------------------------------------------------------------------------------------------------------------------- |
@@ -167,7 +167,9 @@ curl -s -H "Authorization: Bearer $TOKEN" "https://api.github.com/repos/<org>/<r
 
 ### GitHub Panel Sections
 
-The full GitHub panel layout is configurable via [`public/github-panel-sections.json`](/Users/alex.bates/Code/timebox/public/github-panel-sections.json). Each entry is a top-level section in the panel; entries are rendered in the order they appear in the array.
+The full GitHub panel layout is configurable via [`public/github-panel-sections.json`](/Users/alex.bates/Code/timebox/public/github-panel-sections.json). A complete reference showing every section type (notifications, search, grouped search) with all supported fields lives next to it as [`public/github-panel-sections.example.json`](/Users/alex.bates/Code/timebox/public/github-panel-sections.example.json) — copy-paste from it to enable features. Each entry is a top-level section in the panel; entries are rendered in the order they appear in the array.
+
+**Notifications are opt-in.** The shipped config has no `notifications` entry, so the notifications section is unrendered and no API calls are made. To enable it, copy the `notifications` entry from the `.example.json` into your `github-panel-sections.json` — and read [GitHub token setup](#github-token-setup) first, because the `/notifications` REST API requires a classic PAT and won't work with fine-grained tokens.
 
 Each entry has a `type` discriminator:
 
@@ -175,21 +177,11 @@ Each entry has a `type` discriminator:
 - `"type": "search"` — a search-driven section, fetched via the GitHub Search API (`/search/issues`, which serves both Issues *and* PRs). Same query syntax you'd type into github.com.
 - `"type": "group"` — a collapsible wrapper containing other sections. Has its own `id`, `title`, optional `defaultExpanded`, and a recursive `sections` array. Sections inside a group render with smaller, nested-style headers. Groups can contain other groups.
 
-Schema (default config — Notifications at top, two PR search sections grouped under "PRs"):
+Schema (shipped default — two PR search sections grouped under "PRs", no notifications):
 
 ```json
 {
   "sections": [
-    {
-      "type": "notifications",
-      "settings": {
-        "categories": [
-          { "id": "newStuff", "label": "New Stuff", "reasons": ["review_requested", "assign"], "frequent": true, "defaultExpanded": true },
-          { "id": "updates",  "label": "Updates",   "reasons": ["mention", "team_mention", "comment", "author", "state_change"], "frequent": true, "defaultExpanded": true },
-          { "id": "noise",    "label": "Noise",     "fallback": true, "frequent": false, "defaultExpanded": false }
-        ]
-      }
-    },
     {
       "type": "group",
       "id": "prs",

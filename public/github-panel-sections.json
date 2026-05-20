@@ -35,49 +35,6 @@
           ]
         }
       ]
-    },
-    {
-      "type": "notifications",
-      "settings": {
-        "categories": [
-          {
-            "id": "primary",
-            "label": "Primary",
-            "reasons": [
-              "mention",
-              "team_mention",
-              "comment",
-              "author",
-              "state_change",
-              "assign",
-              "ci_activity"
-            ],
-            "frequent": true,
-            "defaultExpanded": true
-          },
-          {
-            "id": "review",
-            "label": "Review Requested",
-            "reasons": ["review_requested"],
-            "frequent": true,
-            "defaultExpanded": true
-          },
-          {
-            "id": "subscribed",
-            "label": "Subscribed",
-            "reasons": ["subscribed"],
-            "frequent": false,
-            "defaultExpanded": false
-          },
-          {
-            "id": "noise",
-            "label": "Noise",
-            "fallback": true,
-            "frequent": false,
-            "defaultExpanded": false
-          }
-        ]
-      }
     }
   ]
 }

@@ -6,7 +6,6 @@ import {
 } from "./rules.js";
 
 export const DEFAULT_PANEL_SECTIONS = [
-  { type: "notifications", settings: DEFAULT_NOTIFICATION_RULES },
   {
     type: "group",
     id: "prs",
@@ -149,9 +148,10 @@ const findNotificationSettings = (sections) => {
 };
 
 // Walk the tree, find the notifications section (if present), return its settings.
-// Falls back to DEFAULT_NOTIFICATION_RULES if no notifications section exists.
+// Returns null if no notifications section exists — callers should treat that as
+// "notifications disabled" and skip fetching/polling entirely.
 export const getNotificationRules = (sections) =>
-  findNotificationSettings(sections) || DEFAULT_NOTIFICATION_RULES;
+  findNotificationSettings(sections);
 
 export const loadPanelSections = async () => {
   try {
