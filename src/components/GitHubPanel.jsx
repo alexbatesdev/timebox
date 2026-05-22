@@ -15,6 +15,20 @@ const GITHUB_SVG = (
   </svg>
 );
 
+const CI_DOT = {
+  success: { color: "#22c55e", title: "All checks passing" },
+  failure: { color: "#dc2626", title: "Checks failing" },
+  pending: { color: "#6b7280", title: "Checks pending" },
+};
+
+const SEVERITY_COLORS = {
+  critical: "#dc2626",
+  high: "#ea580c",
+  medium: "#f59e0b",
+  low: "#6b7280",
+};
+const severityColor = (sev) => SEVERITY_COLORS[sev] || "#4b5563";
+
 const isLightColor = (hex) => {
   if (!hex) return false;
   const c = hex.replace("#", "");
@@ -493,6 +507,19 @@ export function SearchResultItem({ item, pinned, onTogglePin, active, onToggleAc
           marginTop: "2px",
         }}
       >
+        {item.ciState && CI_DOT[item.ciState] && (
+          <span
+            title={CI_DOT[item.ciState].title}
+            style={{
+              width: "8px",
+              height: "8px",
+              borderRadius: "50%",
+              background: CI_DOT[item.ciState].color,
+              flexShrink: 0,
+              display: "inline-block",
+            }}
+          />
+        )}
         <span style={{ fontSize: "10px", color: "#6b7280" }}>#{item.number}</span>
         <span style={{ fontSize: "10px", color: "#4b5563" }}>{item.author}</span>
         <span style={{ fontSize: "10px", color: "#4b5563" }}>{item.repo}</span>
@@ -541,6 +568,31 @@ export function SearchResultItem({ item, pinned, onTogglePin, active, onToggleAc
       </div>
       {expanded && (
         <div style={{ paddingLeft: "20px", marginTop: "4px" }}>
+          {item.failingChecks && item.failingChecks.length > 0 && (
+            <div style={{ marginBottom: "6px" }}>
+              <div style={{ fontSize: "10px", color: "#6b7280", marginBottom: "2px" }}>
+                Failing checks
+              </div>
+              {item.failingChecks.map((check, idx) => (
+                <a
+                  key={`${check.name}-${idx}`}
+                  href={check.url || "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "block",
+                    fontSize: "11px",
+                    color: "#dc2626",
+                    textDecoration: "none",
+                    padding: "1px 0",
+                  }}
+                  title={check.name}
+                >
+                  • {check.name}
+                </a>
+              ))}
+            </div>
+          )}
           <NotesSection noteText={noteText} onNoteChange={onNoteChange} />
         </div>
       )}
@@ -727,6 +779,244 @@ function SearchSection({
   );
 }
 
+export function DependabotItem({ item, pinned, onTogglePin, active, onToggleActive, activeColor, expanded, onToggleExpand, noteText, onNoteChange, thresholds }) {
+  const { timeColor, titleColor } = getAgeColors(item.updatedAt, thresholds);
+  const sevColor = severityColor(item.severity);
+  return (
+    <div style={{ borderBottom: "1px solid #1a1a1a", padding: "6px 0" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+        <button
+          onClick={() => onToggleExpand(item.id)}
+          style={{
+            background: "none",
+            border: "none",
+            color: "#6b7280",
+            cursor: "pointer",
+            fontSize: "10px",
+            padding: "0 2px",
+            flexShrink: 0,
+            width: "14px",
+          }}
+        >
+          {expanded ? "▼" : "▶"}
+        </button>
+        <span
+          style={{
+            fontSize: "9px",
+            padding: "1px 5px",
+            borderRadius: "9999px",
+            background: sevColor,
+            color: isLightColor(sevColor) ? "#1a1a1a" : "#fff",
+            fontFamily: "inherit",
+            textTransform: "uppercase",
+            fontWeight: "700",
+            flexShrink: 0,
+          }}
+        >
+          {item.severity || "?"}
+        </span>
+        <a
+          href={item.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            flex: 1,
+            minWidth: 0,
+            fontSize: "12px",
+            color: active ? activeColor : pinned ? "#fde047" : titleColor || "#d1d5db",
+            fontWeight: active ? "700" : "600",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            textDecoration: "none",
+            textAlign: "left",
+          }}
+          title={item.title}
+        >
+          {item.title}
+        </a>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          marginTop: "2px",
+        }}
+      >
+        <span style={{ fontSize: "10px", color: "#6b7280" }}>#{item.number}</span>
+        {item.package && (
+          <span style={{ fontSize: "10px", color: "#9ca3af" }}>{item.package}</span>
+        )}
+        {item.ecosystem && (
+          <span style={{ fontSize: "10px", color: "#4b5563" }}>{item.ecosystem}</span>
+        )}
+        {item.scope && (
+          <span style={{ fontSize: "10px", color: "#4b5563" }}>{item.scope}</span>
+        )}
+        <span
+          style={{
+            fontSize: "12px",
+            fontWeight: "700",
+            color: timeColor,
+            marginLeft: "auto",
+          }}
+        >
+          {relativeTime(item.updatedAt)}
+        </span>
+        <button
+          onClick={() => onTogglePin(item.id)}
+          title={pinned ? "Unpin" : "Pin"}
+          style={{
+            background: "none",
+            border: "1px solid #333",
+            borderRadius: "4px",
+            color: pinned ? "#fde047" : "#4b5563",
+            cursor: "pointer",
+            fontSize: "10px",
+            padding: "2px 5px",
+            fontFamily: "inherit",
+          }}
+        >
+          {pinned ? "★" : "☆"}
+        </button>
+        <button
+          onClick={() => onToggleActive(item.id)}
+          title={active ? "Stop active" : "Mark active"}
+          style={{
+            background: "none",
+            border: "1px solid #333",
+            borderRadius: "4px",
+            color: active ? activeColor : "#4b5563",
+            cursor: "pointer",
+            fontSize: "10px",
+            padding: "2px 5px",
+            fontFamily: "inherit",
+          }}
+        >
+          {active ? "●" : "○"}
+        </button>
+      </div>
+      {expanded && (
+        <div style={{ paddingLeft: "20px", marginTop: "4px" }}>
+          <div style={{ fontSize: "10px", color: "#6b7280", marginBottom: "4px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            {item.ghsaId && <span>{item.ghsaId}</span>}
+            {item.cveId && <span>{item.cveId}</span>}
+            {item.vulnerableRange && <span>vulnerable: {item.vulnerableRange}</span>}
+            {item.firstPatchedVersion && <span>patched: {item.firstPatchedVersion}</span>}
+          </div>
+          {item.description && (
+            <div
+              style={{
+                fontSize: "11px",
+                color: "#9ca3af",
+                whiteSpace: "pre-wrap",
+                marginBottom: "6px",
+                maxHeight: "200px",
+                overflowY: "auto",
+              }}
+            >
+              {item.description}
+            </div>
+          )}
+          <NotesSection noteText={noteText} onNoteChange={onNoteChange} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DependabotSection({
+  title,
+  items,
+  pinnedIds,
+  onTogglePin,
+  activeIds,
+  onToggleActive,
+  activeColor,
+  expandedId,
+  onToggleExpand,
+  getNote,
+  setNote,
+  defaultExpanded = true,
+  accentColor,
+  thresholds,
+  nested = false,
+}) {
+  const [collapsed, setCollapsed] = useState(!defaultExpanded);
+  const headerPadding = nested ? "6px 16px" : "10px 16px";
+  const caretSize = nested ? "9px" : "10px";
+  const titleFontSize = nested ? "11px" : "13px";
+  const titleColor = nested ? "#9ca3af" : "#e5e7eb";
+  const titleWeight = nested ? "600" : "700";
+  const detailFontSize = nested ? "9px" : "10px";
+  const wrapperStyle = nested
+    ? { marginBottom: "4px" }
+    : { borderBottom: "1px solid #252525" };
+
+  return (
+    <div style={wrapperStyle}>
+      <button
+        onClick={() => items.length > 0 && setCollapsed(!collapsed)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          width: "100%",
+          padding: headerPadding,
+          background: "none",
+          border: "none",
+          cursor: items.length > 0 ? "pointer" : "default",
+          fontFamily: "inherit",
+        }}
+      >
+        <span style={{ fontSize: caretSize, color: "#6b7280" }}>
+          {items.length === 0 ? "◦" : collapsed ? "▶" : "▼"}
+        </span>
+        <span style={{ fontSize: titleFontSize, color: titleColor, fontWeight: titleWeight }}>
+          {title}
+        </span>
+        <span style={{ fontSize: detailFontSize, color: "#6b7280" }}>
+          {items.length > 0 ? (
+            <span
+              style={{
+                color: "#e5e7eb",
+                padding: "0 4px",
+                borderRadius: "9999px",
+                background: "#333",
+              }}
+            >
+              {items.length}
+            </span>
+          ) : (
+            <span style={{ color: "#4b5563" }}>empty</span>
+          )}
+        </span>
+      </button>
+      {!collapsed && items.length > 0 && (
+        <div style={{ padding: "0 16px 8px", borderLeft: accentColor ? `2px solid ${accentColor}` : "none", marginLeft: accentColor ? "14px" : "0" }}>
+          {items.map((item) => (
+            <DependabotItem
+              key={item.id}
+              item={item}
+              pinned={pinnedIds?.has(String(item.id))}
+              onTogglePin={onTogglePin}
+              active={activeIds?.has(String(item.id)) ?? false}
+              onToggleActive={onToggleActive}
+              activeColor={activeColor}
+              expanded={expandedId === item.id}
+              onToggleExpand={onToggleExpand}
+              noteText={getNote(item.id)}
+              onNoteChange={(text) => setNote(item.id, text)}
+              thresholds={thresholds}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CollapsibleSection({
   title,
   detail,
@@ -784,6 +1074,8 @@ export default function GitHubPanel({
   searchResults,
   panelSections,
   onLoadSearchResults,
+  dependabotAlerts,
+  onLoadDependabotAlerts,
 }) {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [hiddenRepos, setHiddenRepos] = useState(loadHiddenRepos);
@@ -818,8 +1110,9 @@ export default function GitHubPanel({
     if (open) {
       onLoadSecondary();
       onLoadSearchResults();
+      onLoadDependabotAlerts?.();
     }
-  }, [open, onLoadSecondary, onLoadSearchResults]);
+  }, [open, onLoadSecondary, onLoadSearchResults, onLoadDependabotAlerts]);
 
   const handleConfirmDelete = (threadId) => {
     if (confirmDeleteId === threadId) {
@@ -998,6 +1291,28 @@ export default function GitHubPanel({
                     items={searchResults[section.id] || []}
                     hiddenRepos={hiddenRepos}
                     onToggleRepo={toggleHiddenRepo}
+                    pinnedIds={pinnedIds}
+                    onTogglePin={onTogglePin}
+                    activeIds={activeIds}
+                    onToggleActive={onToggleActive}
+                    activeColor={activeColor}
+                    expandedId={expandedId}
+                    onToggleExpand={handleToggleExpand}
+                    getNote={getNote}
+                    setNote={setNote}
+                    accentColor={section.accentColor}
+                    defaultExpanded={section.defaultExpanded}
+                    thresholds={section.ageThresholds}
+                    nested={nested}
+                  />
+                );
+              }
+              if (section.type === "dependabot") {
+                return (
+                  <DependabotSection
+                    key={section.id}
+                    title={section.title}
+                    items={dependabotAlerts?.[section.id] || []}
                     pinnedIds={pinnedIds}
                     onTogglePin={onTogglePin}
                     activeIds={activeIds}

@@ -3,7 +3,7 @@ import { useNotes } from "../hooks/useNotes.js";
 import { useTeamworkExpand } from "../hooks/useTeamworkExpand.js";
 import { LooseEndItem } from "./LooseEndsPanel.jsx";
 import { TaskNode } from "./TeamworkPanel.jsx";
-import { NotificationItem, SearchResultItem } from "./GitHubPanel.jsx";
+import { NotificationItem, SearchResultItem, DependabotItem } from "./GitHubPanel.jsx";
 import { DEFAULT_AGE_THRESHOLDS } from "../github/format.js";
 
 function Section({ title, count, children }) {
@@ -63,15 +63,18 @@ export default function FavoritesPanel({
   ghPinnedIds,
   favoriteGithubNotifs,
   favoriteSearchResults,
+  favoriteDependabotAlerts,
   onMarkRead,
   onMarkDone,
   onTogglePinGh,
   onLoadNoise,
   onLoadSearchResults,
+  onLoadDependabotAlerts,
 }) {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [expandedNotifId, setExpandedNotifId] = useState(null);
   const [expandedPrId, setExpandedPrId] = useState(null);
+  const [expandedAlertId, setExpandedAlertId] = useState(null);
   const [menuKey, setMenuKey] = useState(null);
   const { getNote: getGhNote, setNote: setGhNote } =
     useNotes("timebox-gh-notes");
@@ -92,7 +95,8 @@ export default function FavoritesPanel({
   useEffect(() => {
     if (open && onLoadNoise) onLoadNoise();
     if (open && onLoadSearchResults) onLoadSearchResults();
-  }, [open, onLoadNoise, onLoadSearchResults]);
+    if (open && onLoadDependabotAlerts) onLoadDependabotAlerts();
+  }, [open, onLoadNoise, onLoadSearchResults, onLoadDependabotAlerts]);
 
   const handleConfirmDelete = (threadId) => {
     if (confirmDeleteId === threadId) {
@@ -113,6 +117,8 @@ export default function FavoritesPanel({
     setExpandedNotifId((prev) => (prev === id ? null : id));
   const togglePrExpand = (id) =>
     setExpandedPrId((prev) => (prev === id ? null : id));
+  const toggleAlertExpand = (id) =>
+    setExpandedAlertId((prev) => (prev === id ? null : id));
 
   const menuTaskId = menuKey ? menuKey.split("/").pop() : null;
   const findTask = (list) => {
@@ -139,7 +145,13 @@ export default function FavoritesPanel({
   const hasTeamwork = favoriteTeamworkTasks.length > 0;
   const hasNotifs = favoriteGithubNotifs.length > 0;
   const hasSearchResults = (favoriteSearchResults?.length ?? 0) > 0;
-  const isEmpty = !hasLoose && !hasTeamwork && !hasNotifs && !hasSearchResults;
+  const hasDependabotAlerts = (favoriteDependabotAlerts?.length ?? 0) > 0;
+  const isEmpty =
+    !hasLoose &&
+    !hasTeamwork &&
+    !hasNotifs &&
+    !hasSearchResults &&
+    !hasDependabotAlerts;
 
   return (
     <>
@@ -361,6 +373,29 @@ export default function FavoritesPanel({
                     activeColor={activeColor}
                     expanded={expandedPrId === item.id}
                     onToggleExpand={togglePrExpand}
+                    noteText={getGhNote(item.id)}
+                    onNoteChange={(text) => setGhNote(item.id, text)}
+                    thresholds={DEFAULT_AGE_THRESHOLDS.mine}
+                  />
+                ))}
+              </div>
+            </Section>
+          )}
+
+          {hasDependabotAlerts && (
+            <Section title="🛡 Dependabot" count={favoriteDependabotAlerts.length}>
+              <div style={{ padding: "0 16px" }}>
+                {favoriteDependabotAlerts.map((item) => (
+                  <DependabotItem
+                    key={item.id}
+                    item={item}
+                    pinned={ghPinnedIds.has(String(item.id))}
+                    onTogglePin={onTogglePinGh}
+                    active={ghActiveIds?.has(String(item.id)) ?? false}
+                    onToggleActive={onToggleActiveGh}
+                    activeColor={activeColor}
+                    expanded={expandedAlertId === item.id}
+                    onToggleExpand={toggleAlertExpand}
                     noteText={getGhNote(item.id)}
                     onNoteChange={(text) => setGhNote(item.id, text)}
                     thresholds={DEFAULT_AGE_THRESHOLDS.mine}

@@ -690,11 +690,15 @@ export default function App() {
   const favoriteSearchResults = Object.values(github.searchResults || {})
     .flat()
     .filter((item) => github.pinnedIds.has(String(item.id)));
+  const favoriteDependabotAlerts = Object.values(github.dependabotAlerts || {})
+    .flat()
+    .filter((item) => github.pinnedIds.has(String(item.id)));
   const favoriteCount =
     favoriteLooseEnds.length +
     favoriteTeamworkTasks.length +
     favoriteGithubNotifs.length +
-    favoriteSearchResults.length;
+    favoriteSearchResults.length +
+    favoriteDependabotAlerts.length;
 
   return (
     <div
@@ -773,6 +777,8 @@ export default function App() {
               searchResults={github.searchResults}
               panelSections={github.panelSections}
               onLoadSearchResults={github.loadSearchResults}
+              dependabotAlerts={github.dependabotAlerts}
+              onLoadDependabotAlerts={github.loadDependabotAlerts}
             />
           )}
         </div>
@@ -939,11 +945,13 @@ export default function App() {
           onToggleActiveGh={github.toggleActive}
           favoriteGithubNotifs={favoriteGithubNotifs}
           favoriteSearchResults={favoriteSearchResults}
+          favoriteDependabotAlerts={favoriteDependabotAlerts}
           onMarkRead={github.markRead}
           onMarkDone={github.markDone}
           onTogglePinGh={github.togglePin}
           onLoadNoise={github.loadNoise}
           onLoadSearchResults={github.loadSearchResults}
+          onLoadDependabotAlerts={github.loadDependabotAlerts}
         />
       </div>
     </div>

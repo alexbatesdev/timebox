@@ -35,6 +35,27 @@
           ]
         }
       ]
+    },
+    {
+      "type": "dependabot",
+      "id": "my-vulns",
+      "title": "My Vulnerabilities",
+      "repo": "builtforteams/built-rails",
+      "filters": {
+        "assignee": "@me",
+        "state": "open",
+        "scope": "runtime",
+        "sort": "updated",
+        "direction": "desc"
+      },
+      "accentColor": "#dc2626",
+      "defaultExpanded": true,
+      "ageThresholds": [
+        { "minHours": 0, "color": "#6b7280" },
+        { "minHours": 24, "color": "#e5e7eb" },
+        { "minHours": 72, "color": "#f59e0b" },
+        { "minHours": 168, "color": "#dc2626", "titleColor": "#dc2626" }
+      ]
     }
   ]
 }

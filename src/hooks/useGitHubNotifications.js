@@ -4,6 +4,9 @@ import {
   fetchNotifications,
   fetchSecondaryNotifications,
   fetchSearchResults,
+  fetchPullRequestChecks,
+  fetchDependabotAlerts,
+  fetchCurrentUser,
   markThreadRead,
   markThreadDone,
 } from "../github/api.js";
@@ -11,6 +14,7 @@ import { classifyTier, getSecondaryReasons } from "../github/rules.js";
 import {
   loadPanelSections,
   collectSearchSections,
+  collectDependabotSections,
   getNotificationRules,
   DEFAULT_PANEL_SECTIONS,
 } from "../github/panelSections.js";
@@ -151,6 +155,7 @@ export const useGitHubNotifications = () => {
   );
 
   const [searchResults, setSearchResults] = useState({});
+  const [prChecks, setPrChecks] = useState({});
 
   const loadSearchResults = useCallback(async () => {
     if (!configured) return;
@@ -170,10 +175,81 @@ export const useGitHubNotifications = () => {
           }
         }),
       );
-      setSearchResults(Object.fromEntries(results));
+      const resultMap = Object.fromEntries(results);
+      setSearchResults(resultMap);
+      const seen = new Set();
+      const prs = [];
+      for (const items of Object.values(resultMap)) {
+        for (const item of items) {
+          if (!item.url || !item.url.includes("/pull/")) continue;
+          if (!item.repo || typeof item.number !== "number") continue;
+          const key = `${item.repo}#${item.number}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          prs.push({ repo: item.repo, number: item.number });
+        }
+      }
+      if (prs.length === 0) {
+        setPrChecks({});
+        return;
+      }
+      try {
+        const checks = await fetchPullRequestChecks(prs);
+        setPrChecks(Object.fromEntries(checks));
+      } catch (err) {
+        console.error("GitHub PR checks fetch failed:", err);
+        setPrChecks({});
+      }
     } catch (err) {
       console.error("GitHub search fetch error:", err);
     }
+  }, [configured, panelSections]);
+
+  const [dependabotAlerts, setDependabotAlerts] = useState({});
+
+  const loadDependabotAlerts = useCallback(async () => {
+    if (!configured) return;
+    const sections = collectDependabotSections(panelSections);
+    if (sections.length === 0) {
+      setDependabotAlerts({});
+      return;
+    }
+    const needsMe = sections.some(
+      (s) => s.filters && Object.values(s.filters).some((v) => typeof v === "string" && v.includes("@me")),
+    );
+    let meLogin = null;
+    if (needsMe) {
+      try {
+        const me = await fetchCurrentUser();
+        meLogin = me?.login || null;
+      } catch (err) {
+        console.error("GitHub /user fetch failed (needed for @me):", err);
+      }
+    }
+    const results = await Promise.all(
+      sections.map(async (section) => {
+        try {
+          const filters = {};
+          for (const [key, value] of Object.entries(section.filters || {})) {
+            if (typeof value === "string" && value.includes("@me")) {
+              if (!meLogin) continue;
+              filters[key] = value.replace(/@me/g, meLogin);
+            } else {
+              filters[key] = value;
+            }
+          }
+          const items = await fetchDependabotAlerts(section.repo, filters);
+          return [section.id, items];
+        } catch (err) {
+          console.error(
+            `GitHub dependabot fetch failed for section "${section.id}":`,
+            err,
+          );
+          return [section.id, []];
+        }
+      }),
+    );
+    setDependabotAlerts(Object.fromEntries(results));
   }, [configured, panelSections]);
 
   const secondaryReasons = useMemo(
@@ -232,10 +308,28 @@ export const useGitHubNotifications = () => {
     };
     const out = {};
     for (const [id, items] of Object.entries(searchResults)) {
+      out[id] = items
+        .map((item) => {
+          const checks = prChecks[`${item.repo}#${item.number}`];
+          return checks ? { ...item, ...checks } : item;
+        })
+        .sort(byPinned);
+    }
+    return out;
+  }, [searchResults, prChecks, pinnedIds]);
+
+  const sortedDependabotAlerts = useMemo(() => {
+    const byPinned = (a, b) => {
+      const ap = pinnedIds.has(String(a.id)) ? 0 : 1;
+      const bp = pinnedIds.has(String(b.id)) ? 0 : 1;
+      return ap - bp;
+    };
+    const out = {};
+    for (const [id, items] of Object.entries(dependabotAlerts)) {
       out[id] = [...items].sort(byPinned);
     }
     return out;
-  }, [searchResults, pinnedIds]);
+  }, [dependabotAlerts, pinnedIds]);
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => n.unread).length,
@@ -261,5 +355,7 @@ export const useGitHubNotifications = () => {
     searchResults: sortedSearchResults,
     panelSections,
     loadSearchResults,
+    dependabotAlerts: sortedDependabotAlerts,
+    loadDependabotAlerts,
   };
 };

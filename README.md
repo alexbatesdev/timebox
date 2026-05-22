@@ -143,14 +143,21 @@ That means if you want the **notifications** section to work, you need a classic
 4. If any of your orgs use SAML SSO, on the token list page click **Configure SSO** next to your token and authorize each org.
 5. If an org has *disabled* classic PATs entirely (you'll see `"<org> forbids access via a personal access token (classic)..."` from any repo call), you can't fix this token-side — an org admin would have to re-enable classic PATs, or you'd have to skip the notifications panel for that org's content.
 
-**Fine-grained PAT (PR/issue search only — notifications won't work):**
+**Fine-grained PAT (everything except notifications):**
 
-If the notifications panel isn't important to you and you only want the PR/issue search sections to work, a fine-grained PAT is fine:
+If the notifications panel isn't important to you, a fine-grained PAT covers PR/issue search, the Dependabot alerts section, and the per-PR CI status indicator:
 1. https://github.com/settings/personal-access-tokens → **Generate new token**.
 2. **Resource owner**: your account *and* every org whose repos you want.
-3. **Repository access**: "All repositories" (simplest).
-4. **Repository permissions**: Contents, Issues, Pull requests, Metadata — all Read-only.
-5. The notifications section will stay empty (the API returns `[]`); the PR search sections will work normally.
+3. **Repository access**: "All repositories" (simplest), or "Only select repositories" including any repo you want surfaced (Dependabot alerts in particular only show for repos the token can access).
+4. **Repository permissions** (all Read-only):
+   - **Metadata** — required baseline for any repo access (auto-selected).
+   - **Pull requests** — for the PR search sections.
+   - **Issues** — for any `is:issue` search section.
+   - **Dependabot alerts** — for the `"type": "dependabot"` section.
+   - **Commit statuses** — for the per-PR CI dot and rolled-up status (covers third-party CI like Codecov).
+   - **Actions** — for the failing-checks list in the expanded PR view (covers GitHub Actions CheckRun entries).
+   - **Contents** — useful baseline; not strictly required for any of the above.
+5. The notifications section will stay empty (the API returns `[]`); everything else works.
 
 **Sanity check** — replace `$TOKEN`:
 
@@ -175,6 +182,7 @@ Each entry has a `type` discriminator:
 
 - `"type": "notifications"` — the Notifications section. Optional `settings` object configures the notification categories (schema below). Only one notifications slot is allowed anywhere in the tree.
 - `"type": "search"` — a search-driven section, fetched via the GitHub Search API (`/search/issues`, which serves both Issues *and* PRs). Same query syntax you'd type into github.com.
+- `"type": "dependabot"` — Dependabot alerts for a single configured repo, fetched via `/repos/{owner}/{repo}/dependabot/alerts`. Requires `security_events` scope on a classic PAT (or "Dependabot alerts: read" on a fine-grained token). All GitHub-supported filter parameters can be passed; `@me` in a filter value resolves to the authenticated user's login.
 - `"type": "group"` — a collapsible wrapper containing other sections. Has its own `id`, `title`, optional `defaultExpanded`, and a recursive `sections` array. Sections inside a group render with smaller, nested-style headers. Groups can contain other groups.
 
 Schema (shipped default — two PR search sections grouped under "PRs", no notifications):
@@ -250,6 +258,18 @@ For `"type": "search"` entries:
 - `accentColor` (optional) — left-border accent color for the section.
 - `defaultExpanded` (optional, default `true`) — whether the section starts expanded.
 - `ageThresholds` (optional) — array of `{ minHours, color, titleColor? }`. The color of the relative-time text (and optionally the title) escalates as an item ages past each threshold.
+
+PR rows that come from search sections automatically include a CI status dot (🟢/🔴/dim gray) next to the PR number, plus a list of failing checks in the expanded view. The status lookup uses a single GraphQL call per refresh; if the token lacks the relevant permissions the dot stays absent and nothing else changes.
+
+For `"type": "dependabot"` entries:
+
+- `id` — unique per dependabot section. Used as the React key and the bucket key for fetched alerts.
+- `title` — section header text.
+- `repo` — the repo to query, in `owner/repo` form.
+- `filters` (optional) — object of query parameters passed through to the Dependabot alerts API. Any [supported parameter](https://docs.github.com/en/rest/dependabot/alerts) works: `state`, `severity`, `ecosystem`, `package`, `manifest`, `scope`, `has`, `epss_percentage`, `classification`, `sort`, `direction`, and **`assignee`**. The string `@me` in any filter value is replaced with the authenticated user's login at fetch time (e.g. `"assignee": "@me"` shows only alerts assigned to you).
+- `accentColor` (optional) — left-border accent color for the section.
+- `defaultExpanded` (optional, default `true`) — whether the section starts expanded.
+- `ageThresholds` (optional) — same shape as for search sections; escalates the age color of each alert as it ages.
 
 For the `"type": "notifications"` entry's optional `settings` object:
 

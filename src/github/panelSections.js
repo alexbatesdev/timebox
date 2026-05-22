@@ -70,6 +70,22 @@ const validateSectionsArray = (sections, ctx) => {
       }
       continue;
     }
+    if (s.type === "dependabot") {
+      if (typeof s.id !== "string" || !s.id) return "dependabot section needs a non-empty id";
+      if (ctx.seenDependabotIds.has(s.id)) return `duplicate dependabot section id "${s.id}"`;
+      ctx.seenDependabotIds.add(s.id);
+      if (typeof s.title !== "string") return `dependabot section "${s.id}" needs a title`;
+      if (typeof s.repo !== "string" || !/^[^/\s]+\/[^/\s]+$/.test(s.repo)) {
+        return `dependabot section "${s.id}" needs a repo in "owner/repo" form`;
+      }
+      if (s.filters !== undefined && (typeof s.filters !== "object" || Array.isArray(s.filters))) {
+        return `dependabot section "${s.id}" filters must be an object`;
+      }
+      if (s.ageThresholds !== undefined && !validateThresholds(s.ageThresholds)) {
+        return `dependabot section "${s.id}" has invalid ageThresholds`;
+      }
+      continue;
+    }
     if (s.type === "group") {
       if (typeof s.id !== "string" || !s.id) return "group section needs a non-empty id";
       if (ctx.seenGroupIds.has(s.id)) return `duplicate group section id "${s.id}"`;
@@ -92,6 +108,7 @@ export const validatePanelSections = (data) => {
     notificationsCount: 0,
     seenSearchIds: new Set(),
     seenGroupIds: new Set(),
+    seenDependabotIds: new Set(),
   });
 };
 
@@ -113,6 +130,20 @@ const normalizeSection = (s) => {
       sections: s.sections.map(normalizeSection),
     };
   }
+  if (s.type === "dependabot") {
+    return {
+      type: "dependabot",
+      id: s.id,
+      title: s.title,
+      repo: s.repo,
+      filters: s.filters && typeof s.filters === "object" ? { ...s.filters } : {},
+      accentColor: typeof s.accentColor === "string" ? s.accentColor : null,
+      defaultExpanded: s.defaultExpanded !== false,
+      ageThresholds: Array.isArray(s.ageThresholds)
+        ? s.ageThresholds
+        : DEFAULT_AGE_THRESHOLDS.mine,
+    };
+  }
   return {
     type: "search",
     id: s.id,
@@ -132,6 +163,16 @@ export const collectSearchSections = (sections) => {
   for (const s of sections) {
     if (s.type === "search") out.push(s);
     else if (s.type === "group") out.push(...collectSearchSections(s.sections));
+  }
+  return out;
+};
+
+// Recursively collect all "dependabot" sections from a tree of panel sections.
+export const collectDependabotSections = (sections) => {
+  const out = [];
+  for (const s of sections) {
+    if (s.type === "dependabot") out.push(s);
+    else if (s.type === "group") out.push(...collectDependabotSections(s.sections));
   }
   return out;
 };
