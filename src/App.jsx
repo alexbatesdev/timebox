@@ -545,8 +545,9 @@ export default function App() {
           showToast("✅ Sent to Notion!", "info");
         }
       }
-    } catch {
-      showToast("⚠️ Network error — is the dev server running?", "warn");
+    } catch (err) {
+      console.error("Send to Notion failed:", err);
+      showToast(`⚠️ Send to Notion failed: ${err.message}`, "warn");
     }
     setIsSending(false);
   };

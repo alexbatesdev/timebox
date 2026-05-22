@@ -1,7 +1,7 @@
 import { NOTION_VERSION } from "./richText.js";
 import { extractSnapshotFromBlocks } from "./parsing.js";
 import { getDateProp } from "./schema.js";
-import { DEFAULT_TIME_FORMAT } from "../utils/time.js";
+import { DEFAULT_TIME_FORMAT, localDateISO } from "../utils/time.js";
 
 const notionHeaders = (token) => ({
   "Content-Type": "application/json",
@@ -69,7 +69,7 @@ const queryTodayNotionEntry = async (token) => {
   if (!token || !dbId) return null;
 
   const dateProp = getDateProp();
-  const todayISO = new Date().toISOString().slice(0, 10);
+  const todayISO = localDateISO();
   const res = await notionFetch(`/databases/${dbId}/query`, token, {
     method: "POST",
     body: JSON.stringify({
@@ -94,7 +94,7 @@ const queryPreviousNotionEntries = async (token, pageSize = 1, startCursor = nul
   if (!token || !dbId) return { results: [], nextCursor: null };
 
   const dateProp = getDateProp();
-  const todayISO = new Date().toISOString().slice(0, 10);
+  const todayISO = localDateISO();
   const body = {
     filter: {
       property: dateProp,

@@ -1,4 +1,4 @@
-import { todayKey } from "./time.js";
+import { todayKey, localDateISO } from "./time.js";
 
 export const loadState = () => {
   try {
@@ -22,7 +22,7 @@ export const loadPreviousWrapup = (maxDaysBack = 7) => {
     for (let i = 1; i <= maxDaysBack; i++) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const dateISO = d.toISOString().slice(0, 10);
+      const dateISO = localDateISO(d);
       const raw = localStorage.getItem(`timebox-${dateISO}`);
       if (!raw) continue;
       const parsed = JSON.parse(raw);
@@ -43,7 +43,7 @@ export const loadPreviousWrapups = (maxDaysBack = 90) => {
     for (let i = 1; i <= maxDaysBack; i++) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const dateISO = d.toISOString().slice(0, 10);
+      const dateISO = localDateISO(d);
       const raw = localStorage.getItem(`timebox-${dateISO}`);
       if (!raw) continue;
       const parsed = JSON.parse(raw);

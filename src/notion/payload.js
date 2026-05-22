@@ -1,4 +1,4 @@
-import { fmtTimeShort, DEFAULT_TIME_FORMAT } from "../utils/time.js";
+import { fmtTimeShort, DEFAULT_TIME_FORMAT, localDateISO } from "../utils/time.js";
 import { TIMEBOX_STATE_LABEL, toRichText, notionCallout, emojiIcon, workIcon, buildTimeboxSnapshot } from "./richText.js";
 import { getDateProp, getTitleProp } from "./schema.js";
 
@@ -68,7 +68,7 @@ export const buildNotionPayload = (parentPageId, schedType, blocks, tasks, wrapu
   }
 
   const dbId = import.meta.env.VITE_NOTION_DATABASE_ID;
-  const todayISO = new Date().toISOString().slice(0, 10);
+  const todayISO = localDateISO();
   const titleRichText = [
     { type: "mention", mention: { type: "date", date: { start: todayISO } } },
     { type: "text", text: { content: `'s Schedule (${modeLabel})` } },
