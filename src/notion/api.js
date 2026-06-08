@@ -140,26 +140,44 @@ export const loadPreviousWrapupFromNotion = async (token, format = DEFAULT_TIME_
 
 export const loadPreviousWrapupsPageFromNotion = async (
   token,
-  { pageSize = 5, startCursor = null, format = DEFAULT_TIME_FORMAT } = {},
+  {
+    pageSize = 5,
+    startCursor = null,
+    format = DEFAULT_TIME_FORMAT,
+    maxQueryRounds = 10,
+  } = {},
 ) => {
-  const { results, nextCursor } = await queryPreviousNotionEntries(
-    token,
-    pageSize,
-    startCursor,
-  );
   const dateProp = getDateProp();
-  const entries = await Promise.all(
-    results.map(async (page) => {
-      const dateISO = page.properties?.[dateProp]?.date?.start || null;
-      const { snapshot } = await loadSnapshotFromPage(page, token, format);
-      const wrapup = snapshot?.wrapup;
-      if (!wrapup || (!wrapup.left && !wrapup.next)) return null;
-      return { wrapup, dateISO };
-    }),
-  );
+  const entries = [];
+  let cursor = startCursor;
+  let rounds = 0;
+
+  // Pages with empty wrap-ups are skipped, so a single query batch can come
+  // back with zero entries even when older wrap-ups exist. Keep following the
+  // cursor until we find at least one entry (or run out of pages / rounds).
+  do {
+    const { results, nextCursor } = await queryPreviousNotionEntries(
+      token,
+      pageSize,
+      cursor,
+    );
+    rounds += 1;
+    const batch = await Promise.all(
+      results.map(async (page) => {
+        const dateISO = page.properties?.[dateProp]?.date?.start || null;
+        const { snapshot } = await loadSnapshotFromPage(page, token, format);
+        const wrapup = snapshot?.wrapup;
+        if (!wrapup || (!wrapup.left && !wrapup.next)) return null;
+        return { wrapup, dateISO };
+      }),
+    );
+    entries.push(...batch.filter(Boolean));
+    cursor = nextCursor;
+  } while (entries.length === 0 && cursor && rounds < maxQueryRounds);
+
   return {
-    entries: entries.filter(Boolean),
-    nextCursor,
+    entries,
+    nextCursor: cursor,
   };
 };
 

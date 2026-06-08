@@ -181,11 +181,29 @@ export default function App() {
       const token = import.meta.env.VITE_NOTION_TOKEN;
       const dbId = import.meta.env.VITE_NOTION_DATABASE_ID;
       if (token && dbId) {
-        return loadPreviousWrapupsPageFromNotion(token, {
+        const result = await loadPreviousWrapupsPageFromNotion(token, {
           pageSize: 3,
           startCursor: cursor,
           format: config?.timeFormat,
         });
+        if (cursor) return result;
+        // First page: merge in localStorage wrap-ups missing from Notion
+        // (e.g. typed after the one-shot 5 PM auto-send). Only dates within
+        // the range this batch covers, so they can't duplicate entries that
+        // later "Load more" pages return.
+        const notionDates = new Set(result.entries.map((e) => e.dateISO));
+        const oldest = result.entries.at(-1)?.dateISO || null;
+        const localExtras = loadPreviousWrapups()
+          .filter(
+            (e) =>
+              !notionDates.has(e.dateISO) &&
+              (!result.nextCursor || (oldest && e.dateISO >= oldest)),
+          )
+          .map((e) => ({ ...e, source: "local" }));
+        const entries = [...result.entries, ...localExtras].sort((a, b) =>
+          (b.dateISO || "").localeCompare(a.dateISO || ""),
+        );
+        return { entries, nextCursor: result.nextCursor };
       }
       if (cursor) return { entries: [], nextCursor: null };
       return { entries: loadPreviousWrapups(), nextCursor: null };
@@ -489,7 +507,7 @@ export default function App() {
     showToast("✅ Copied to clipboard!", "info");
   };
 
-  const sendToNotion = async () => {
+  const sendToNotion = async ({ quiet = false } = {}) => {
     const token = import.meta.env.VITE_NOTION_TOKEN;
     const parentPage = import.meta.env.VITE_NOTION_PARENT_PAGE;
     const dbId = import.meta.env.VITE_NOTION_DATABASE_ID;
@@ -525,7 +543,7 @@ export default function App() {
           else showToast(`⚠️ ${err.message || updateRes.status}`, "warn");
         } else {
           await replaceNotionPageContent(notionPageId, token, payload.children);
-          showToast("✅ Sent to Notion!", "info");
+          if (!quiet) showToast("✅ Sent to Notion!", "info");
         }
       } else {
         const createRes = await notionFetch("/pages", token, {
@@ -542,7 +560,7 @@ export default function App() {
         } else {
           const created = await createRes.json();
           setNotionPageId(created.id);
-          showToast("✅ Sent to Notion!", "info");
+          if (!quiet) showToast("✅ Sent to Notion!", "info");
         }
       }
     } catch (err) {
@@ -565,6 +583,24 @@ export default function App() {
       }
     }
   });
+
+  /* ── auto-sync wrap-up edits to Notion (debounced) ──── */
+  // The 5 PM auto-send fires once, so wrap-up text typed after it (or on days
+  // when the app closes before 5 PM) used to stay in localStorage only and
+  // never reach Notion. Re-send quietly 30s after the last wrap-up edit.
+  const wrapupDirty = useRef(false);
+  useEffect(() => {
+    if (!wrapupDirty.current) return undefined;
+    const token = import.meta.env.VITE_NOTION_TOKEN;
+    const parentPage = import.meta.env.VITE_NOTION_PARENT_PAGE;
+    const dbId = import.meta.env.VITE_NOTION_DATABASE_ID;
+    if (!token || (!parentPage && !dbId)) return undefined;
+    const timer = setTimeout(() => {
+      wrapupDirty.current = false;
+      sendToNotion({ quiet: true });
+    }, 30000);
+    return () => clearTimeout(timer);
+  }, [wrapup]);
 
   /* ── auto-open loose ends panel ────────────────────── */
   const curBlockKey = blocks[getCurIdx()]?.id;
@@ -674,6 +710,7 @@ export default function App() {
   };
 
   const handleWrapupChange = (key, value) => {
+    wrapupDirty.current = true;
     setWrapup((p) => ({ ...p, [key]: value }));
   };
 

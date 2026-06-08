@@ -154,6 +154,17 @@ export default function PreviousWrapupsModal({ show, onClose, loadWrapups }) {
                 }}
               >
                 {entry.dateISO ? formatDate(entry.dateISO) : "Unknown date"}
+                {entry.source === "local" && (
+                  <span
+                    style={{
+                      marginLeft: "8px",
+                      fontWeight: "400",
+                      color: "#6b7280",
+                    }}
+                  >
+                    (this device only)
+                  </span>
+                )}
               </div>
               <div
                 style={{
