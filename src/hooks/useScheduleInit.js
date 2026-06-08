@@ -3,10 +3,7 @@ import { getWeekdayKey } from "../utils/time.js";
 import { loadState, loadPreviousWrapup } from "../utils/storage.js";
 import { loadScheduleConfig } from "../data/scheduleConfig.js";
 import { resolveInitialState } from "../data/schedules.js";
-import {
-  loadTodayFromNotion,
-  loadPreviousWrapupFromNotion,
-} from "../notion/api.js";
+import { loadPreviousWrapupFromNotion } from "../notion/api.js";
 
 export const useScheduleInit = ({
   setSchedType,
@@ -14,7 +11,6 @@ export const useScheduleInit = ({
   setTasks,
   setWrapup,
   setPreviousWrapup,
-  setNotionPageId,
   setConfigStatus,
   setConfig,
   clearNotified,
@@ -50,34 +46,7 @@ export const useScheduleInit = ({
         setBlocks(saved.blocks ?? []);
         setTasks(saved.tasks ?? {});
         setWrapup(saved.wrapup ?? { left: "", next: "" });
-        setNotionPageId(saved.notionPageId ?? null);
         clearNotified();
-        setConfigStatus("ready");
-        return;
-      }
-
-      let notionState = null;
-      try {
-        notionState = await loadTodayFromNotion(token, timeFormat);
-      } catch (err) {
-        showToast?.(`Notion load failed: ${err.message}`, "warn");
-      }
-      if (cancelled) return;
-
-      if (notionState?.snapshot) {
-        setSchedType(notionState.snapshot.schedType);
-        setBlocks(notionState.snapshot.blocks);
-        setTasks(notionState.snapshot.tasks);
-        setWrapup(notionState.snapshot.wrapup);
-        setNotionPageId(notionState.pageId);
-        clearNotified();
-        if (notionState.warnings?.length) {
-          const lines = notionState.warnings.map((w) => `"${w}"`).join(", ");
-          showToast?.(
-            `Notion: skipped ${notionState.warnings.length} malformed line(s): ${lines}`,
-            "warn",
-          );
-        }
         setConfigStatus("ready");
         return;
       }
@@ -93,7 +62,6 @@ export const useScheduleInit = ({
       setBlocks(nextState.blocks);
       setTasks(nextState.tasks);
       setWrapup(nextState.wrapup);
-      setNotionPageId(null);
       clearNotified();
       setConfigStatus("ready");
     };

@@ -64,31 +64,6 @@ const loadSnapshotFromPage = async (page, token, format) => {
   return { pageId: page.id, snapshot, warnings };
 };
 
-const queryTodayNotionEntry = async (token) => {
-  const dbId = import.meta.env.VITE_NOTION_DATABASE_ID;
-  if (!token || !dbId) return null;
-
-  const dateProp = getDateProp();
-  const todayISO = localDateISO();
-  const res = await notionFetch(`/databases/${dbId}/query`, token, {
-    method: "POST",
-    body: JSON.stringify({
-      filter: {
-        property: dateProp,
-        date: { equals: todayISO },
-      },
-      page_size: 1,
-    }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || `Failed to query Notion (${res.status})`);
-  }
-
-  const data = await res.json();
-  return data.results?.[0] || null;
-};
-
 const queryPreviousNotionEntries = async (token, pageSize = 1, startCursor = null) => {
   const dbId = import.meta.env.VITE_NOTION_DATABASE_ID;
   if (!token || !dbId) return { results: [], nextCursor: null };
@@ -118,12 +93,6 @@ const queryPreviousNotionEntries = async (token, pageSize = 1, startCursor = nul
     results: data.results || [],
     nextCursor: data.has_more ? data.next_cursor : null,
   };
-};
-
-export const loadTodayFromNotion = async (token, format = DEFAULT_TIME_FORMAT) => {
-  const page = await queryTodayNotionEntry(token);
-  if (!page) return null;
-  return loadSnapshotFromPage(page, token, format);
 };
 
 export const loadPreviousWrapupFromNotion = async (token, format = DEFAULT_TIME_FORMAT) => {
@@ -179,30 +148,4 @@ export const loadPreviousWrapupsPageFromNotion = async (
     entries,
     nextCursor: cursor,
   };
-};
-
-export const replaceNotionPageContent = async (pageId, token, children) => {
-  const existingChildren = await fetchAllBlockChildren(pageId, token);
-  for (const child of existingChildren) {
-    const res = await notionFetch(`/blocks/${child.id}`, token, {
-      method: "DELETE",
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(
-        err.message || `Failed to clear page content (${res.status})`,
-      );
-    }
-  }
-
-  const res = await notionFetch(`/blocks/${pageId}/children`, token, {
-    method: "PATCH",
-    body: JSON.stringify({ children }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(
-      err.message || `Failed to append page content (${res.status})`,
-    );
-  }
 };

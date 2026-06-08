@@ -1,23 +1,21 @@
 # Timebox
 
-Personal daily scheduler built with React and Vite. The main view is a configurable timeboxed daily schedule synced to a Notion database. Optional side panels integrate with GitHub (notifications + saved searches), Teamwork (your assigned tasks), a Notion "loose ends" database, and a Favorites panel that surfaces pinned items across the other panels.
+Personal daily scheduler built with React and Vite. The main view is a configurable timeboxed daily schedule driven by local config and persisted to your browser's localStorage. The day can be exported via a pluggable export layer (Markdown→clipboard is the built-in). Optional side panels integrate with GitHub (notifications + saved searches), Teamwork (your assigned tasks), a Notion "loose ends" database, and a Favorites panel that surfaces pinned items across the other panels. Notion is also used read-only to surface the previous day's wrap-up.
 
 ## Prerequisites
 
 - **Node.js ≥ 20.19** (or ≥ 22.12). Vite 8 will refuse to start on older versions.
 - **npm** (ships with Node).
-- A **Notion** account with at least one database — required to run the app.
+- A **Notion** account is optional — used read-only for the previous-day wrap-up and the loose ends panel. The app runs without it.
 
 ## Setup
 
 1. Install dependencies: `npm install`
 2. Copy the env template: `cp .env.example .env`
-3. Fill in `.env` — at minimum you need a Notion token, the main database ID, and a parent page ID. See `.env.example` for what each var does and which are optional. The full list of supported env vars is summarized in [Environment variables](#environment-variables) below.
-4. In Notion, share the integration with the database and parent page (Share → Connections → add your integration).
-5. Confirm your main database has these properties:
-   - A **title** property (default name: `Name`)
-   - A **date** property (default name: `date`)
-   - If your DB uses different names, set `VITE_NOTION_TITLE_PROP` / `VITE_NOTION_DATE_PROP` in `.env`.
+3. Fill in `.env` — all vars are optional. To surface the previous day's wrap-up from Notion, set a Notion token and the main database ID. See `.env.example` for what each var does. The full list of supported env vars is summarized in [Environment variables](#environment-variables) below.
+4. (Optional) In Notion, share the integration with the database (Share → Connections → add your integration).
+5. (Optional) Confirm your main database has a **date** property (default name: `date`).
+   - If your DB uses a different name, set `VITE_NOTION_DATE_PROP` in `.env`.
 6. (Optional) For the loose ends panel, create a second database with a title property (default `Name`) and a checkbox (default `Done`), then set `VITE_NOTION_LOOSE_ENDS_DB`. Override the property names with `VITE_NOTION_LOOSE_ENDS_TITLE_PROP` / `VITE_NOTION_LOOSE_ENDS_DONE_PROP` if your DB uses different ones. See [Loose Ends panel](#loose-ends-panel).
 7. (Optional) Add `VITE_GITHUB_TOKEN` for the notifications panel and `VITE_TEAMWORK_*` for the Teamwork panel. See [GitHub panel](#github-panel-sections) and [Teamwork panel](#teamwork-panel) for setup details.
 8. (Optional) Tweak [`public/schedule-config.json`](/Users/alex.bates/Code/timebox/public/schedule-config.json) to match your own workday — block names, hours, weekday-to-schedule mapping, time format, and active highlight color. See [Schedule Selection](#schedule-selection).
@@ -29,15 +27,12 @@ Everything Vite reads at runtime is listed and documented in [`.env.example`](/U
 
 | Variable                              | Required? | Purpose                                                                                  |
 | ------------------------------------- | --------- | ---------------------------------------------------------------------------------------- |
-| `VITE_NOTION_TOKEN`                   | Yes       | Notion internal integration token.                                                       |
-| `VITE_NOTION_DATABASE_ID`             | Yes       | ID of the main timebox database.                                                         |
-| `VITE_NOTION_PARENT_PAGE`             | Yes       | Page under which new daily entries are created.                                          |
-| `VITE_NOTION_TITLE_PROP`              | No        | Override title property name on main DB (default `Name`).                                |
+| `VITE_NOTION_TOKEN`                   | No        | Notion internal integration token. Enables read-only previous-wrap-up + loose ends.      |
+| `VITE_NOTION_DATABASE_ID`             | No        | ID of the main timebox database; read for the previous day's wrap-up.                    |
 | `VITE_NOTION_DATE_PROP`               | No        | Override date property name on main DB (default `date`).                                 |
 | `VITE_NOTION_LOOSE_ENDS_DB`           | No        | Enables the Loose Ends panel; ID of a second Notion DB.                                  |
 | `VITE_NOTION_LOOSE_ENDS_TITLE_PROP`   | No        | Override title property on the loose-ends DB (default `Name`).                           |
 | `VITE_NOTION_LOOSE_ENDS_DONE_PROP`    | No        | Override checkbox property on the loose-ends DB (default `Done`).                        |
-| `VITE_NOTION_CUSTOM_EMOJI_ID`         | No        | Custom emoji ID for work-callout icons in Notion blocks. Falls back to 💻 when unset.    |
 | `VITE_GITHUB_TOKEN`                   | No        | GitHub access token. **Classic PAT** required if you want the notifications section (the `/notifications` API doesn't support fine-grained tokens). Fine-grained tokens work for the PR/issue search sections only. See [GitHub token setup](#github-token-setup). |
 | `VITE_TEAMWORK_SITE`                  | No        | Teamwork subdomain (e.g. `acme` for `acme.teamwork.com`). Required to enable Teamwork.   |
 | `VITE_TEAMWORK_API_KEY`               | No        | Teamwork API key (Profile → API & Mobile → API Tokens). Required with `VITE_TEAMWORK_SITE`. |
@@ -51,7 +46,7 @@ The full schedule layout — which schedule plays on which weekday, the blocks e
 | `defaultType`  | string  | Schedule key used if `days` is missing or invalid for today.                                                            |
 | `days`         | object  | Map of `monday`…`sunday` → schedule key.                                                                                |
 | `schedules`    | object  | Map of schedule key → schedule definition (see below).                                                                  |
-| `timeFormat`   | string  | How time strings in this file (and Notion) are parsed/written. See [Time Format](#time-format). Default `lazyOpinionated`. |
+| `timeFormat`   | string  | How time strings in this file are parsed (and how the previous-day wrap-up is read from Notion). See [Time Format](#time-format). Default `lazyOpinionated`. |
 | `activeColor`  | string  | Hex color used for the "active item" highlight across panels. Default `#22d3ee`.                                        |
 
 `defaultType` and `days` values must be keys present in `schedules`. If a day is omitted or invalid, the app falls back to `defaultType`. Out of the box the file defines two schedules — `standup` and `noStandup` — but you can rename them, add more, or replace them entirely.
@@ -95,7 +90,7 @@ Each entry under `schedules` is a named schedule:
 Block fields:
 
 - `id` — unique string within the schedule. Stable across edits; the app uses it to track which block a task belongs to.
-- `label` — header text shown in the UI and written into Notion.
+- `label` — header text shown in the UI and in Markdown exports.
 - `start` / `end` — time strings parsed using `timeFormat` (see below).
 - `type` — one of `work`, `flex-work`, `break`, `meeting`, `wrapup`. Unknown values fall back to `work`. The type drives icon/styling and (for `wrapup`) special end-of-day behavior.
 
@@ -103,9 +98,9 @@ Block fields:
 
 ### Time Format
 
-Set `timeFormat` in `schedule-config.json` to control how time strings are parsed (in the config and from Notion) and how they are written back to Notion / markdown exports. The in-app UI always displays times as 12-hour with `AM`/`PM`.
+Set `timeFormat` in `schedule-config.json` to control how time strings in the config are parsed, how the previous-day wrap-up is read from Notion, and how times are written into Markdown exports. The in-app UI always displays times as 12-hour with `AM`/`PM`.
 
-| Value              | Config / Notion text       | Notes                                                                                                                  |
+| Value              | Config text                | Notes                                                                                                                  |
 | ------------------ | -------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `lazyOpinionated`  | `9:00`, `1:15`, `4:45`     | **Default.** Bare numbers, no AM/PM. Hours 1–8 are interpreted as PM. Only round-trips correctly between 9 AM and 8 PM. |
 | `12h`              | `9:00 AM`, `1:15 PM`       | Explicit AM/PM suffix required. Unambiguous.                                                                           |
@@ -126,7 +121,7 @@ Example:
 }
 ```
 
-If `timeFormat` is omitted or unknown, it falls back to `lazyOpinionated`. The format applies to both reads (parsing config strings, parsing legacy Notion block titles) and writes (Notion block titles, markdown exports), so changing it requires either rewriting your config strings or letting the app re-emit them on the next Notion send.
+If `timeFormat` is omitted or unknown, it falls back to `lazyOpinionated`. The format applies to reads (parsing config strings, parsing legacy Notion block titles when reading a previous wrap-up) and writes (Markdown exports), so changing it requires rewriting your config strings to match.
 
 ### GitHub token setup
 
@@ -327,4 +322,4 @@ The app currently bakes in a few of the original author's preferences. These are
 
 - [ ] **Default schedules are personal** (`src/data/scheduleConfig.js:5-51`) — block names "Block A/B/C/D", 9–5 workday, lunch 12:45–1:15. Ship a generic template, or add a first-run setup flow.
 - [ ] **Block label parsing is fragile** (`src/notion/parsing.js:78-93`) — string-matches "Plan the day", "Standup", "Wrap up", "Lunch", "Break". Rename a block in Notion and parsing silently breaks.
-- [ ] **In-app UI is hardcoded 12-hour with AM/PM** (`src/utils/time.js:fmtTime`) — the schedule-config `timeFormat` controls config/Notion/markdown round-tripping, but the header and block list always render as 12h. A user who picks `24h` for their config will still see 12h in the UI.
+- [ ] **In-app UI is hardcoded 12-hour with AM/PM** (`src/utils/time.js:fmtTime`) — the schedule-config `timeFormat` controls config parsing, previous-wrap-up reads, and Markdown export, but the header and block list always render as 12h. A user who picks `24h` for their config will still see 12h in the UI.

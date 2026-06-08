@@ -7,15 +7,11 @@ import {
 } from "./utils/storage.js";
 import { loadScheduleConfig } from "./data/scheduleConfig.js";
 import { createScheduleState } from "./data/schedules.js";
-import { buildMarkdown } from "./export/markdown.js";
+import { exporters } from "./export/index.js";
 import {
-  loadTodayFromNotion,
   loadPreviousWrapupFromNotion,
   loadPreviousWrapupsPageFromNotion,
-  notionFetch,
-  replaceNotionPageContent,
 } from "./notion/api.js";
-import { buildNotionPayload } from "./notion/payload.js";
 import { useClock } from "./hooks/useClock.js";
 import { usePersist } from "./hooks/usePersist.js";
 import { useNotifications } from "./hooks/useNotifications.js";
@@ -46,7 +42,6 @@ export default function App() {
   const [tasks, setTasks] = useState({});
   const [wrapup, setWrapup] = useState({ left: "", next: "" });
   const [previousWrapup, setPreviousWrapup] = useState(null);
-  const [notionPageId, setNotionPageId] = useState(null);
   const [configStatus, setConfigStatus] = useState("loading");
   const [config, setConfig] = useState(null);
   const [toast, setToast] = useState(null);
@@ -62,7 +57,6 @@ export default function App() {
   const [mtgMinute, setMtgMinute] = useState(0);
   const [mtgDuration, setMtgDuration] = useState(30);
   const [mtgIncludesLunch, setMtgIncludesLunch] = useState(false);
-  const [isSending, setIsSending] = useState(false);
   const [showAwayModal, setShowAwayModal] = useState(false);
   const [awayStart, setAwayStart] = useState(null);
   const [awayAbsorbFlex, setAwayAbsorbFlex] = useState(true);
@@ -80,14 +74,13 @@ export default function App() {
   const now = useClock();
   const { notifPerm, requestNotif, clearNotified, testNotif } =
     useNotifications(blocks, tasks, now);
-  usePersist(schedType, blocks, tasks, wrapup, notionPageId);
+  usePersist(schedType, blocks, tasks, wrapup);
   useScheduleInit({
     setSchedType,
     setBlocks,
     setTasks,
     setWrapup,
     setPreviousWrapup,
-    setNotionPageId,
     setConfigStatus,
     setConfig,
     clearNotified,
@@ -106,7 +99,6 @@ export default function App() {
     setBlocks(nextState.blocks);
     setTasks(nextState.tasks);
     setWrapup(nextState.wrapup);
-    setNotionPageId(null);
     clearNotified();
   };
 
@@ -115,7 +107,6 @@ export default function App() {
     setConfigStatus("loading");
 
     const token = import.meta.env.VITE_NOTION_TOKEN;
-    const dbId = import.meta.env.VITE_NOTION_DATABASE_ID;
 
     const freshConfig = await loadScheduleConfig();
     setConfig(freshConfig);
@@ -130,35 +121,6 @@ export default function App() {
     if (!previous) previous = loadPreviousWrapup();
     setPreviousWrapup(previous);
 
-    if (token && dbId) {
-      let notionState = null;
-      try {
-        notionState = await loadTodayFromNotion(token, timeFormat);
-      } catch (err) {
-        showToast(`Notion load failed: ${err.message}`, "warn");
-      }
-      if (notionState?.snapshot) {
-        setSchedType(notionState.snapshot.schedType);
-        setBlocks(notionState.snapshot.blocks);
-        setTasks(notionState.snapshot.tasks);
-        setWrapup(notionState.snapshot.wrapup);
-        setNotionPageId(notionState.pageId);
-        clearNotified();
-        if (notionState.warnings?.length) {
-          const lines = notionState.warnings.map((w) => `"${w}"`).join(", ");
-          showToast(
-            `Notion: skipped ${notionState.warnings.length} malformed line(s): ${lines}`,
-            "warn",
-          );
-        }
-        setConfigStatus("ready");
-        return;
-      }
-      if (notionState === null) {
-        showToast("No Notion page for today — using local config", "info");
-      }
-    }
-
     const weekday = getWeekdayKey();
     const nextType =
       freshConfig.days[weekday] !== undefined
@@ -170,7 +132,6 @@ export default function App() {
       setBlocks(nextState.blocks);
       setTasks(nextState.tasks);
       setWrapup(nextState.wrapup);
-      setNotionPageId(null);
       clearNotified();
     }
     setConfigStatus("ready");
@@ -500,107 +461,22 @@ export default function App() {
     });
   };
 
-  /* ── notion export ──────────────────────────────────── */
-  const copyMarkdown = async () => {
-    const md = buildMarkdown(blocks, tasks, wrapup, config?.timeFormat);
-    await navigator.clipboard.writeText(md);
-    showToast("✅ Copied to clipboard!", "info");
-  };
-
-  const sendToNotion = async ({ quiet = false } = {}) => {
-    const token = import.meta.env.VITE_NOTION_TOKEN;
-    const parentPage = import.meta.env.VITE_NOTION_PARENT_PAGE;
-    const dbId = import.meta.env.VITE_NOTION_DATABASE_ID;
-    if (!token || (!parentPage && !dbId)) {
-      showToast(
-        "⚠️ Set VITE_NOTION_TOKEN and VITE_NOTION_PARENT_PAGE env vars",
-        "warn",
-      );
-      return;
-    }
-    setIsSending(true);
+  /* ── export ─────────────────────────────────────────── */
+  const runExport = async (exporter) => {
     try {
-      const payload = buildNotionPayload(
-        parentPage,
+      const result = await exporter.run({
         schedType,
         blocks,
         tasks,
         wrapup,
-        config?.timeFormat,
-      );
-
-      if (notionPageId) {
-        const updateRes = await notionFetch(`/pages/${notionPageId}`, token, {
-          method: "PATCH",
-          body: JSON.stringify({ properties: payload.properties }),
-        });
-        if (!updateRes.ok) {
-          const err = await updateRes.json().catch(() => ({}));
-          if (updateRes.status === 401)
-            showToast("⚠️ Invalid Notion token", "warn");
-          else if (updateRes.status === 404)
-            showToast("⚠️ Parent page not found", "warn");
-          else showToast(`⚠️ ${err.message || updateRes.status}`, "warn");
-        } else {
-          await replaceNotionPageContent(notionPageId, token, payload.children);
-          if (!quiet) showToast("✅ Sent to Notion!", "info");
-        }
-      } else {
-        const createRes = await notionFetch("/pages", token, {
-          method: "POST",
-          body: JSON.stringify(payload),
-        });
-        if (!createRes.ok) {
-          const err = await createRes.json().catch(() => ({}));
-          if (createRes.status === 401)
-            showToast("⚠️ Invalid Notion token", "warn");
-          else if (createRes.status === 404)
-            showToast("⚠️ Parent page not found", "warn");
-          else showToast(`⚠️ ${err.message || createRes.status}`, "warn");
-        } else {
-          const created = await createRes.json();
-          setNotionPageId(created.id);
-          if (!quiet) showToast("✅ Sent to Notion!", "info");
-        }
-      }
+        timeFormat: config?.timeFormat,
+      });
+      if (result?.message) showToast(result.message, result.tone || "info");
     } catch (err) {
-      console.error("Send to Notion failed:", err);
-      showToast(`⚠️ Send to Notion failed: ${err.message}`, "warn");
+      console.error(`Export "${exporter.id}" failed:`, err);
+      showToast(`⚠️ ${exporter.label} failed: ${err.message}`, "warn");
     }
-    setIsSending(false);
   };
-
-  /* ── auto-send to Notion at 5 PM ─────────────────── */
-  const autoSent = useRef(false);
-  useEffect(() => {
-    if (now >= 1020 && schedType && !autoSent.current) {
-      autoSent.current = true;
-      const token = import.meta.env.VITE_NOTION_TOKEN;
-      const parentPage = import.meta.env.VITE_NOTION_PARENT_PAGE;
-      const dbId = import.meta.env.VITE_NOTION_DATABASE_ID;
-      if (token && (parentPage || dbId)) {
-        setTimeout(sendToNotion, 0);
-      }
-    }
-  });
-
-  /* ── auto-sync wrap-up edits to Notion (debounced) ──── */
-  // The 5 PM auto-send fires once, so wrap-up text typed after it (or on days
-  // when the app closes before 5 PM) used to stay in localStorage only and
-  // never reach Notion. Re-send quietly 30s after the last wrap-up edit.
-  const wrapupDirty = useRef(false);
-  useEffect(() => {
-    if (!wrapupDirty.current) return undefined;
-    const token = import.meta.env.VITE_NOTION_TOKEN;
-    const parentPage = import.meta.env.VITE_NOTION_PARENT_PAGE;
-    const dbId = import.meta.env.VITE_NOTION_DATABASE_ID;
-    if (!token || (!parentPage && !dbId)) return undefined;
-    const timer = setTimeout(() => {
-      wrapupDirty.current = false;
-      sendToNotion({ quiet: true });
-    }, 30000);
-    return () => clearTimeout(timer);
-  }, [wrapup]);
 
   /* ── auto-open loose ends panel ────────────────────── */
   const curBlockKey = blocks[getCurIdx()]?.id;
@@ -710,7 +586,6 @@ export default function App() {
   };
 
   const handleWrapupChange = (key, value) => {
-    wrapupDirty.current = true;
     setWrapup((p) => ({ ...p, [key]: value }));
   };
 
@@ -920,11 +795,7 @@ export default function App() {
           loadPreviousWrapups={loadPreviousWrapupsForModal}
         />
 
-        <ExportBar
-          isSending={isSending}
-          onCopyMarkdown={copyMarkdown}
-          onSendToNotion={sendToNotion}
-        />
+        <ExportBar exporters={exporters} onRun={runExport} />
       </div>
       <div
         style={{
