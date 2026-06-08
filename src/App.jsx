@@ -16,6 +16,7 @@ import { useClock } from "./hooks/useClock.js";
 import { usePersist } from "./hooks/usePersist.js";
 import { useNotifications } from "./hooks/useNotifications.js";
 import { useScheduleInit } from "./hooks/useScheduleInit.js";
+import { useAutoExport } from "./hooks/useAutoExport.js";
 
 import { useLooseEnds } from "./hooks/useLooseEnds.js";
 import { useTeamwork } from "./hooks/useTeamwork.js";
@@ -84,6 +85,20 @@ export default function App() {
     setConfigStatus,
     setConfig,
     clearNotified,
+    showToast,
+  });
+
+  const { notifyWrapupEdited } = useAutoExport({
+    exporters,
+    snapshot: {
+      schedType,
+      blocks,
+      tasks,
+      wrapup,
+      timeFormat: config?.timeFormat,
+    },
+    schedType,
+    now,
     showToast,
   });
 
@@ -587,6 +602,7 @@ export default function App() {
 
   const handleWrapupChange = (key, value) => {
     setWrapup((p) => ({ ...p, [key]: value }));
+    notifyWrapupEdited();
   };
 
   const favoriteLooseEnds = looseEnds.items.filter((i) =>

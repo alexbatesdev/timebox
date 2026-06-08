@@ -1,9 +1,12 @@
 import { buildMarkdown } from "./markdown.js";
+import { notionExporter } from "./notion/index.js";
 
 // Generic export layer: each exporter receives a snapshot of the current day
 // ({ schedType, blocks, tasks, wrapup, timeFormat }) and optionally returns a
-// { message, tone } for a toast. New targets (e.g. Obsidian) plug in here
-// without touching App.jsx.
+// { message, tone } for a toast. Optional fields:
+//   isAvailable() — hide the exporter (e.g. when unconfigured)
+//   auto         — { dailyAt, onWrapupChange } consumed by useAutoExport
+// New targets (e.g. Obsidian) plug in here without touching App.jsx.
 export const exporters = [
   {
     id: "markdown",
@@ -14,4 +17,5 @@ export const exporters = [
       return { message: "✅ Copied to clipboard!", tone: "info" };
     },
   },
+  notionExporter,
 ];
