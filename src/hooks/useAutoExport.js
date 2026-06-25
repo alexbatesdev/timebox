@@ -31,12 +31,10 @@ export const useAutoExport = ({ exporters, snapshot, schedType, now, showToast }
   const dailySent = useRef(false);
   useEffect(() => {
     if (!schedType || dailySent.current) return;
-    const due = exporters.some(
-      (e) => available(e) && e.auto?.dailyAt != null && now >= e.auto.dailyAt,
-    );
-    if (!due) return;
+    const isDue = (e) => e.auto?.dailyAt != null && now >= e.auto.dailyAt;
+    if (!exporters.some((e) => available(e) && isDue(e))) return;
     dailySent.current = true;
-    runAuto((e) => e.auto?.dailyAt != null && now >= e.auto.dailyAt);
+    runAuto(isDue);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [now, schedType]);
 

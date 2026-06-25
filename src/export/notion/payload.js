@@ -20,10 +20,11 @@ export const customEmojiIcon = (id) => ({
   type: "custom_emoji",
   custom_emoji: { id },
 });
-const workIcon = () => {
+// import.meta.env is fixed at build time, so resolve the work-block icon once.
+const WORK_ICON = (() => {
   const customId = import.meta.env.VITE_NOTION_CUSTOM_EMOJI_ID;
   return customId ? customEmojiIcon(customId) : emojiIcon("💻");
-};
+})();
 
 export const notionCallout = (icon, text) => ({
   object: "block",
@@ -80,7 +81,7 @@ const buildBlockToggle = (block, tasks, wrapup, format) => {
   const callouts = [];
 
   if (block.type === "work" || block.type === "flex-work") {
-    callouts.push(notionCallout(workIcon(), task));
+    callouts.push(notionCallout(WORK_ICON, task));
   } else if (block.type === "meeting") {
     callouts.push(
       notionCallout(emojiIcon("✏️"), task ? `Notes:\n${task}` : "Notes:"),

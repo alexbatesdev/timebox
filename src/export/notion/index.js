@@ -75,10 +75,12 @@ const updatePage = async (pageId, properties, children) => {
   // Clear existing content, then re-append. The state block is children[0], so
   // it lands in the first append batch and is present even if a later batch fails.
   const existingIds = await fetchTopLevelChildIds(pageId);
-  for (const id of existingIds) {
-    const del = await notionFetch(`/blocks/${id}`, token(), { method: "DELETE" });
-    await ensureOk(del, "Failed to clear page content");
-  }
+  await Promise.all(
+    existingIds.map(async (id) => {
+      const del = await notionFetch(`/blocks/${id}`, token(), { method: "DELETE" });
+      await ensureOk(del, "Failed to clear page content");
+    }),
+  );
   await appendChildren(pageId, children);
 };
 
